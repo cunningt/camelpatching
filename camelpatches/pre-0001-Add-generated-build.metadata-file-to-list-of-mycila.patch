@@ -1,0 +1,27 @@
+From b85fe6520e9d347678c68b048a64528ec3f2f00d Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 16 Jan 2024 17:57:48 -0500
+Subject: [PATCH] Add generated build.metadata file to list of mycila license
+ exclusions (#2381)
+
+---
+ pom.xml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index 301c288ddd66..2f38a147f634 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -238,6 +238,9 @@
+                                     ${maven.multiModuleProjectDirectory}/buildingtools/src/main/resources/header.txt
+                                 </header>
+                                 <excludes>
++                                    <exclude>**/Cargo.lock</exclude>
++                                    <exclude>build.metadata</exclude>
++                                    <exclude>.snyk</exclude>
+                                     <exclude>release.properties</exclude>
+                                     <exclude>**/pom.xml.tag</exclude>
+                                     <exclude>**/pom.xml.releaseBackup</exclude>
+-- 
+2.46.0
+
