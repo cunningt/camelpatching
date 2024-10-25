@@ -1,0 +1,98 @@
+From 8d8e21b7d9c0af11e93967b23e4e9305760aa3c5 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Mon, 7 Oct 2024 14:25:44 -0400
+Subject: [PATCH] Add prod-maven-plugin to pom.xml
+
+---
+ pom.xml | 61 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 61 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index b1d636cdaa3..07e7259336e 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -77,6 +77,8 @@
+         <module>catalog</module>
+         <module>tests</module>
+         <module>docs</module>
++        <module>sap</module>
++        <module>cics</module>
+         <module>archetypes</module>
+     </modules>
+ 
+@@ -113,6 +115,15 @@
+         <!-- Camel target version -->
+         <camel-version>4.8.1-SNAPSHOT</camel-version>
+ 
++        <!-- cq plugin version -->
++        <cq-plugin.version>4.4.2</cq-plugin.version>
++        <camel-community.version>4.8.0</camel-community.version>
++        <camel-spring-boot-community.version>4.8.0</camel-spring-boot-community.version>
++        <camel-sap.version>4.0.0.redhat-00001</camel-sap.version>
++        <camel-cics.version>4.8.0.redhat-00005</camel-cics.version>
++        <!-- narayana spring boot version -->
++        <narayana-spring-boot.version>3.0.0.redhat-00017</narayana-spring-boot.version>
++
+         <!-- versions -->
+         <aether-version>1.0.2.v20150114</aether-version>
+         <arquillian-container-se-managed-version>1.0.2.Final</arquillian-container-se-managed-version>
+@@ -165,6 +176,56 @@
+         <defaultGoal>install</defaultGoal>
+ 
+         <plugins>
++            <plugin>
++                <groupId>org.l2x6.cq</groupId>
++                <artifactId>cq-camel-spring-boot-prod-maven-plugin</artifactId>
++                <version>${cq-plugin.version}</version>
++                <configuration>
++                    <requiredProductizedCamelArtifacts>${maven.multiModuleProjectDirectory}/product/src/main/resources/required-productized-camel-artifacts.txt</requiredProductizedCamelArtifacts>
++                    <simpleElementWhitespace>SPACE</simpleElementWhitespace>
++                    <additionalProductizedArtifactIds>
++                        <additionalProductizedArtifactId>com.redhat.camel.springboot.platform:camel-spring-boot-bom</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>org.fusesource:camel-sap-starter</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>com.sap.conn.idoc:com.sap.conn.idoc</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>com.sap.conn.jco:com.sap.conn.jco</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>bom-generator</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>catalog</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>archetypes</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>org.apache.camel.archetypes:camel-archetype-spring-boot</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>spring-boot-parent</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>tooling</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-bom</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-dependencies-generator</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-dependencies</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-bom-generator</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-bom</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-starter-generator</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>core-modules</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-engine-starter</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-starter</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-spring-boot-xml</additionalProductizedArtifactId>
++                    </additionalProductizedArtifactIds>
++                </configuration>
++                <dependencies>
++                    <dependency>
++                        <groupId>org.apache.camel</groupId>
++                        <artifactId>camel-package-maven-plugin</artifactId>
++                        <version>${camel-version}</version>
++                    </dependency>
++                    <dependency>
++                        <groupId>com.google.guava</groupId>
++                        <artifactId>guava</artifactId>
++                        <version>32.1.1-jre</version>
++                        <exclusions>
++                            <exclusion>
++                                <groupId>com.google.code.findbugs</groupId>
++                                <artifactId>jsr305</artifactId>
++                            </exclusion>
++                        </exclusions>
++                    </dependency>
++                </dependencies>
++            </plugin>
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-compiler-plugin</artifactId>
+-- 
+2.46.0
+

@@ -3,42 +3,45 @@
 $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Contents/Home";
 
 $vers = "4.8.1";
-$dir = "camelpatching";
-$patchdir = "camelpatches";
+$dir = "camel-spring-boot-${vers}-branch";
+$patchdir = "csbpatches";
 
-$currentprodbranch = "camel-4.8.0-branch";
-$prodlocation = "prodlocation";
+$upstreambranch = "camel-spring-boot-4.8.x";
+$currentprodbranch = "camel-spring-boot-4.8.0-branch";
+$prodlocation = "csbprodlocation";
 
 # Clean up directories
 system("rm -rf $dir");
 system("rm -rf $prodlocation");
 
 # Clone
-system("git clone git\@github.com:jboss-fuse/camel.git $dir");
-#system("git clone git\@github.com:jboss-fuse/camel.git $prodlocation");
+system("git clone git\@github.com:jboss-fuse/camel-spring-boot.git $dir");
+#system("git clone git\@github.com:jboss-fuse/camel-spring-boot.git $prodlocation");
 
-system("cp -r ~/prod/camel $prodlocation");
+system("cp -r ~/prod/camel-spring-boot $prodlocation");
 
 chdir $dir;
-system("git remote add upstream git\@github.com:apache/camel.git");
+system("git remote add upstream git\@github.com:apache/camel-spring-boot.git");
 system("git fetch upstream");
 
-sleep(3);
+sleep(10);
 
-system("git checkout -b camel-${vers}-branch upstream/camel-4.8.x");
+system("git checkout -b camel-${vers}-branch upstream/${upstreambranch}");
 
 sleep(3);
 
 # Change the version
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DnewVersion=${vers}-SNAPSHOT versions:set");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
 
 # Apply pre-prod-maven-plugin patches, with check
 open (FILEH, "ls ../$patchdir/pre-*.patch | sort -u |");
 while ($file = <FILEH>) {
     chomp $file;
 
+    print "\n\n\n==== APPLYING $file\n\n";
     system("git apply --check $file");
-    system("git am --keep-cr --signoff < $file")
+    system("git am --keep-cr --signoff < $file");
+    print "====\n\n\n";
 
 }
 close(FILEH);
@@ -49,7 +52,15 @@ system ("git add product");
 
 sleep(3);
 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn org.l2x6.cq:cq-camel-prod-maven-plugin:camel-prod-excludes -N");
+# Copy the entire sap directory
+system ("cp -r ../$prodlocation/sap .");
+system ("git add sap");
+
+# Copy the entire cics directory
+system ("cp -r ../$prodlocation/cics .");
+system("git add cics");
+
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn org.l2x6.cq:cq-camel-spring-boot-prod-maven-plugin:camel-spring-boot-prod-excludes -N");
 
 sleep(3);
 
@@ -62,18 +73,35 @@ sleep(3);
 
 system("git commit -a -m \"Compile with results of prod-maven-plugin\"");
 
-# Apply pre-prod-maven-plugin patches, with check
+# Apply post-prod-maven-plugin patches, with check
 open (FILEH, "ls ../$patchdir/post-*.patch | sort -u |");
 while ($file = <FILEH>) {
     chomp $file;
 
+    print "\n\n\n==== APPLYING $file\n\n";
     system("git apply --check $file");
-    system("git am --keep-cr --signoff < $file")
+    system("git am --keep-cr --signoff < $file");
+    print "====\n\n\n";
 
 }
 close(FILEH);
 
 sleep(3);
+
+# Apply tooling changes
+system ("cp -r ../$prodlocation/tooling/redhat-camel-spring-boot-bom-generator ./tooling");
+system ("cp -r ../$prodlocation/tooling/redhat-camel-spring-boot-bom ./tooling");
+system ("cp -r ../$prodlocation/tooling/redhat-patch-maven-plugin ./tooling");
+
+sleep(3);
+
+system ("git add tooling");
+
+sleep(3);
+
+system("git commit -a -m \"Compile with results of prod-maven-plugin\"");
+
+
 
 # Build for final time - there should be no changes 
 system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DskipTests clean install");

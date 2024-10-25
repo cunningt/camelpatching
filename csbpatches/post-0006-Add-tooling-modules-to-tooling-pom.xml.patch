@@ -1,0 +1,26 @@
+From 5c8cedba2d8c192c1ea2af71259571d2e280ebf0 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 8 Oct 2024 16:19:09 -0400
+Subject: [PATCH] Add tooling modules to tooling/pom.xml
+
+---
+ tooling/pom.xml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/tooling/pom.xml b/tooling/pom.xml
+index 2efb919455a..925ed4d8b16 100644
+--- a/tooling/pom.xml
++++ b/tooling/pom.xml
+@@ -41,6 +41,9 @@
+         <module>camel-spring-boot-bom</module>
+         <module>camel-starter-parent</module>
+         <module>camel-spring-boot-starter-generator</module>
++        <module>redhat-camel-spring-boot-bom-generator</module>
++        <module>redhat-camel-spring-boot-bom</module>
++        <module>redhat-patch-maven-plugin</module>
+     </modules>
+ 
+     <build>
+-- 
+2.46.0
+

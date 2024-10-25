@@ -1,0 +1,56 @@
+From 3765d883a8c7e8c53c533b2a8d6cba30586459bf Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Thu, 19 Sep 2024 06:42:11 -0400
+Subject: [PATCH] CSB-4246: exclusions from guava (#428)
+
+Co-authored-by: Croway <federico.mariani.1990@gmail.com>
+---
+ .../camel-google-bigquery-starter/pom.xml              | 10 ++++++++++
+ .../camel-guava-eventbus-starter/pom.xml               | 10 ++++++++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/components-starter/camel-google-bigquery-starter/pom.xml b/components-starter/camel-google-bigquery-starter/pom.xml
+index b4b4dfe1fb9..3b2d5f85eb9 100644
+--- a/components-starter/camel-google-bigquery-starter/pom.xml
++++ b/components-starter/camel-google-bigquery-starter/pom.xml
+@@ -38,6 +38,16 @@
+       <groupId>com.google.guava</groupId>
+       <artifactId>guava</artifactId>
+       <version>${guava-version}</version>
++      <exclusions>
++        <exclusion>
++          <groupId>com.google.errorprone</groupId>
++          <artifactId>error_prone_annotations</artifactId>
++        </exclusion>
++        <exclusion>
++          <groupId>org.checkerframework</groupId>
++          <artifactId>checker-qual</artifactId>
++        </exclusion>
++      </exclusions>
+     </dependency>
+     <dependency>
+       <groupId>org.apache.camel</groupId>
+diff --git a/components-starter/camel-guava-eventbus-starter/pom.xml b/components-starter/camel-guava-eventbus-starter/pom.xml
+index 44ba48d768a..cb10c72c53a 100644
+--- a/components-starter/camel-guava-eventbus-starter/pom.xml
++++ b/components-starter/camel-guava-eventbus-starter/pom.xml
+@@ -44,6 +44,16 @@
+       <groupId>com.google.guava</groupId>
+       <artifactId>guava</artifactId>
+       <version>${guava-version}</version>
++      <exclusions>
++        <exclusion>
++          <groupId>com.google.errorprone</groupId>
++          <artifactId>error_prone_annotations</artifactId>
++        </exclusion>
++        <exclusion>
++          <groupId>org.checkerframework</groupId>
++          <artifactId>checker-qual</artifactId>
++        </exclusion>
++      </exclusions>
+     </dependency>
+     <dependency>
+       <groupId>org.apache.camel.springboot</groupId>
+-- 
+2.46.0
+

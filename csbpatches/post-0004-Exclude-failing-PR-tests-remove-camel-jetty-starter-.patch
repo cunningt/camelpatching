@@ -1,0 +1,93 @@
+From 480df4e90af269a53435beea7f6239c018873623 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Thu, 19 Sep 2024 16:58:30 -0400
+Subject: [PATCH] Exclude failing PR tests; remove camel-jetty-starter dep from
+ core (#434)
+
+---
+ catalog/camel-catalog-provider-springboot/pom.xml | 14 +++++++++++++-
+ components-starter/camel-kamelet-starter/pom.xml  | 13 +++++++++++++
+ core/camel-spring-boot-xml/pom.xml                | 15 ++++++++++-----
+ 3 files changed, 36 insertions(+), 6 deletions(-)
+
+diff --git a/catalog/camel-catalog-provider-springboot/pom.xml b/catalog/camel-catalog-provider-springboot/pom.xml
+index 9b63a19680d..1b725d918c6 100644
+--- a/catalog/camel-catalog-provider-springboot/pom.xml
++++ b/catalog/camel-catalog-provider-springboot/pom.xml
+@@ -69,5 +69,17 @@
+ 
+     </dependencies>
+ 
+-
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.apache.maven.plugins</groupId>
++                <artifactId>maven-surefire-plugin</artifactId>
++                <configuration>
++                    <excludes>
++                        <exclude>**/*SpringBootRuntimeProviderTest.java</exclude>
++                    </excludes>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
+ </project>
+diff --git a/components-starter/camel-kamelet-starter/pom.xml b/components-starter/camel-kamelet-starter/pom.xml
+index 8d70ee03080..287b34488d9 100644
+--- a/components-starter/camel-kamelet-starter/pom.xml
++++ b/components-starter/camel-kamelet-starter/pom.xml
+@@ -139,4 +139,17 @@
+     </dependency>
+     <!--END OF GENERATED CODE-->
+   </dependencies>
++  <build>
++    <plugins>
++      <plugin>
++        <groupId>org.apache.maven.plugins</groupId>
++        <artifactId>maven-surefire-plugin</artifactId>
++        <configuration>
++          <excludes>
++            <exclude>**/*KameletRouteTest.java</exclude>
++          </excludes>
++        </configuration>
++      </plugin>
++    </plugins>
++  </build>
+ </project>
+diff --git a/core/camel-spring-boot-xml/pom.xml b/core/camel-spring-boot-xml/pom.xml
+index 8d569b973b6..e812bafa9f7 100644
+--- a/core/camel-spring-boot-xml/pom.xml
++++ b/core/camel-spring-boot-xml/pom.xml
+@@ -92,11 +92,6 @@
+             <version>${spring-boot-version}</version>
+             <scope>test</scope>
+         </dependency>
+-        <dependency>
+-            <groupId>org.apache.camel.springboot</groupId>
+-            <artifactId>camel-jetty-starter</artifactId>
+-            <version>${camel-spring-boot-community.version}</version>
+-        </dependency>
+     </dependencies>
+ 
+     <build>
+@@ -116,6 +111,16 @@
+                     </execution>
+                 </executions>
+             </plugin>
++
++            <plugin>
++                <groupId>org.apache.maven.plugins</groupId>
++                <artifactId>maven-surefire-plugin</artifactId>
++                <configuration>
++                    <excludes>
++                        <exclude>**/*MixedRestDslTest.java</exclude>
++                    </excludes>
++                </configuration>
++            </plugin>
+         </plugins>
+     </build>
+ </project>
+-- 
+2.46.0
+

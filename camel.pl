@@ -3,7 +3,7 @@
 $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Contents/Home";
 
 $vers = "4.8.1";
-$dir = "camelpatching";
+$dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
 $currentprodbranch = "camel-4.8.0-branch";
@@ -30,7 +30,7 @@ system("git checkout -b camel-${vers}-branch upstream/camel-4.8.x");
 sleep(3);
 
 # Change the version
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DnewVersion=${vers}-SNAPSHOT versions:set");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
 
 # Apply pre-prod-maven-plugin patches, with check
 open (FILEH, "ls ../$patchdir/pre-*.patch | sort -u |");
@@ -62,7 +62,7 @@ sleep(3);
 
 system("git commit -a -m \"Compile with results of prod-maven-plugin\"");
 
-# Apply pre-prod-maven-plugin patches, with check
+# Apply post-prod-maven-plugin patches, with check
 open (FILEH, "ls ../$patchdir/post-*.patch | sort -u |");
 while ($file = <FILEH>) {
     chomp $file;

@@ -1,0 +1,73 @@
+From d2e9b98f828b170cef41532cc318a140ea370fec Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 8 Oct 2024 08:42:44 -0400
+Subject: [PATCH] Add additional dependencyManagement entries and properties
+ for tomcat and openshift-maven-plugin
+
+---
+ pom.xml | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index 07e7259336e..52cf387f86e 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -124,6 +124,9 @@
+         <!-- narayana spring boot version -->
+         <narayana-spring-boot.version>3.0.0.redhat-00017</narayana-spring-boot.version>
+ 
++        <openshift-maven-plugin-version>1.17.0.redhat-00003</openshift-maven-plugin-version>
++        <tomcat-version>10.1.28</tomcat-version>
++
+         <!-- versions -->
+         <aether-version>1.0.2.v20150114</aether-version>
+         <arquillian-container-se-managed-version>1.0.2.Final</arquillian-container-se-managed-version>
+@@ -144,6 +147,45 @@
+ 	    <cyclonedx-maven-plugin-version>2.8.1</cyclonedx-maven-plugin-version>
+     </properties>
+ 
++    <dependencyManagement>
++        <dependencies>
++            <!-- dev.snowdrop:narayana-spring-boot-core dependencyManagement entry
++                is necessary for PME align to the correct narayana-spring-boot.version -->
++            <dependency>
++                <groupId>dev.snowdrop</groupId>
++                <artifactId>narayana-spring-boot-core</artifactId>
++                <version>${narayana-spring-boot.version}</version>
++            </dependency>
++            <!-- org.fusesource:camel-sap dependencyManagement entry
++                is necessary for PME align to the correct narayana-spring-boot.version -->
++            <dependency>
++                <groupId>org.fusesource</groupId>
++                <artifactId>camel-sap</artifactId>
++                <version>${camel-sap.version}</version>
++            </dependency>
++            <!-- org.fusesource:camel-cics dependencyManagement entry
++                is necessary for PME align to the correct narayana-spring-boot.version -->
++            <dependency>
++                <groupId>org.fusesource</groupId>
++                <artifactId>camel-cics</artifactId>
++                <version>${camel-cics.version}</version>
++            </dependency>
++            <!-- org.eclipse.jkube:openshift-maven-plugin dependencyManagement entry
++                is necessary for PME align to the correct openshift-maven-plugin-version -->
++            <dependency>
++                <groupId>org.eclipse.jkube</groupId>
++                <artifactId>openshift-maven-plugin</artifactId>
++                <version>${openshift-maven-plugin-version}</version>
++            </dependency>
++            <!-- org.apache.tomcat:catalina dependencyManagement entry
++                is necessary for PME align to the correct tomcat-version -->
++            <dependency>
++                <groupId>org.apache.tomcat</groupId>
++                <artifactId>tomcat-catalina</artifactId>
++                <version>${tomcat-version}</version>
++            </dependency>
++        </dependencies>
++    </dependencyManagement>
+ 
+     <!-- Comment out the snapshot repositories as we don't need them now -->
+     <repositories>
+-- 
+2.46.0
+

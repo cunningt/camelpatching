@@ -1,0 +1,699 @@
+From bde5730fa45d75186e8680828f259c7c55dd4308 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 8 Oct 2024 16:45:24 -0400
+Subject: [PATCH] Tooling changes for product (add product artifacts, bom
+ changes, etc)
+
+---
+ .../pom.xml                                   |   6 +
+ .../maven/AbstractSpringBootGenerator.java    |  15 +-
+ .../maven/BomDependenciesGeneratorMojo.java   | 101 +++++++--
+ .../springboot/maven/BomGeneratorMojo.java    | 206 +++++++++++++++---
+ .../RequiredProductizedArtifactsReader.java   |  58 +++++
+ 5 files changed, 340 insertions(+), 46 deletions(-)
+ create mode 100644 tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/RequiredProductizedArtifactsReader.java
+
+diff --git a/tooling/camel-spring-boot-dependencies-generator/pom.xml b/tooling/camel-spring-boot-dependencies-generator/pom.xml
+index b81af23efdf..6989800f131 100644
+--- a/tooling/camel-spring-boot-dependencies-generator/pom.xml
++++ b/tooling/camel-spring-boot-dependencies-generator/pom.xml
+@@ -125,6 +125,12 @@
+                             <!-- These artifacts should not be included in the final (generated) BOM -->
+ 
+                             <!-- Different versions from the ones provided by spring-boot -->
++                            <exclude>io.micrometer:*</exclude>
++                            <exclude>org.apache.commons:commons-lang3</exclude>
++
++                            <exclude>net.bytebuddy:byte-buddy-agent</exclude>
++                            <exclude>net.bytebuddy:byte-buddy</exclude>
++                            <exclude>org.xmlunit:xmlunit-assertj3</exclude>
+                             <exclude>de.flapdoodle*:*</exclude>
+                             <exclude>org.apache.activemq:*</exclude>
+                             <exclude>org.apache.commons:commons-pool2</exclude>
+diff --git a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/AbstractSpringBootGenerator.java b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/AbstractSpringBootGenerator.java
+index d451a2302ba..7717d97d152 100644
+--- a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/AbstractSpringBootGenerator.java
++++ b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/AbstractSpringBootGenerator.java
+@@ -89,8 +89,11 @@ public abstract class AbstractSpringBootGenerator extends AbstractMojo {
+     }
+ 
+     protected String getMainDepGroupId() {
+-        if ("camel-spring-boot-starter".equals(project.getArtifactId())) {
++        String artifactId = project.getArtifactId();
++        if ("camel-spring-boot-starter".equals(artifactId)) {
+             return "org.apache.camel.springboot";
++        } else if ("camel-sap-starter".equals(artifactId) || "camel-cics-starter".equals(artifactId)) {
++            return "org.fusesource";
+         } else {
+             // others are from camel
+             return "org.apache.camel";
+@@ -123,9 +126,10 @@ public abstract class AbstractSpringBootGenerator extends AbstractMojo {
+     protected Map<String, Supplier<String>> getJSonFiles(JarFile componentJar) {
+         Artifact mainDep = getMainDep();
+         Map<String, Supplier<String>> files;
+-        files = componentJar.stream().filter(je -> je.getName().endsWith(".json"))
+-                .collect(Collectors.toMap(je -> "jar:" + mainDep.getFile().toURI() + "!" + je.getName(),
+-                        je -> cache(() -> loadJson(componentJar, je))));
++        files = componentJar.stream()
++            .filter(je -> je.getName().endsWith(".json"))
++            .collect(Collectors.toMap(je -> "jar:" + mainDep.getFile().toURI().toString() + "!" + je.getName(),
++                    je -> cache(() -> loadJson(componentJar, je))));
+         return files;
+     }
+ 
+@@ -223,7 +227,8 @@ public abstract class AbstractSpringBootGenerator extends AbstractMojo {
+ 
+     protected String loadJsonOfType(Map<String, Supplier<String>> jsonFiles, String modelName, String type) {
+         for (Map.Entry<String, Supplier<String>> entry : jsonFiles.entrySet()) {
+-            if (entry.getKey().endsWith("/" + modelName) || entry.getKey().endsWith("!" + modelName)) {
++            if (entry.getKey().endsWith("/" + modelName)
++                    || entry.getKey().endsWith("!" + modelName)) {
+                 String json = entry.getValue().get();
+                 if (json.contains("\"kind\": \"" + type + "\"")) {
+                     return json;
+diff --git a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomDependenciesGeneratorMojo.java b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomDependenciesGeneratorMojo.java
+index 1940baabfff..84170838c2b 100644
+--- a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomDependenciesGeneratorMojo.java
++++ b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomDependenciesGeneratorMojo.java
+@@ -26,6 +26,7 @@ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Comparator;
+ import java.util.HashSet;
++import java.util.HashMap;
+ import java.util.List;
+ import java.util.Set;
+ import java.util.TreeSet;
+@@ -141,6 +142,15 @@ public class BomDependenciesGeneratorMojo extends AbstractMojo {
+     @Parameter(defaultValue = "${basedir}/../../components-starter")
+     protected File startersDir;
+ 
++    @Parameter(defaultValue = "${basedir}/../../product/src/main/resources/required-productized-camel-artifacts.txt")
++    protected File requiredProductizedCamelSpringBootArtifactsFile;
++
++    @Parameter(property = "bom.narayanaSpringBootVersion", defaultValue = "${narayana-spring-boot.version}")
++    protected String narayanaSpringBootVersion;
++
++    @Parameter(property = "bom.camelCommunityVersion", defaultValue = "${camel-spring-boot-community.version}")
++    protected String camelCommunityVersion;
++
+     /**
+      * The user configuration
+      */
+@@ -173,6 +183,24 @@ public class BomDependenciesGeneratorMojo extends AbstractMojo {
+         }
+     }
+ 
++    /*
++     * Method that checks the list of dependencies for an existing entry for the same g:a to avoid
++     * collisions and duplicates.
++     */
++    private boolean dependencyExists(List<Dependency> outDependencies, Dependency depToCheck) {
++        for (Dependency dep : outDependencies) {
++            if ((dep.getGroupId().equals(depToCheck.getGroupId()))
++                && (dep.getArtifactId().equals(depToCheck.getArtifactId()))) {
++                getLog().error("Trying to add " + depToCheck.getGroupId() + ":" + depToCheck.getArtifactId() + ":"
++                    + depToCheck.getVersion() + ":" + depToCheck.getClassifier() + " to the list of dependencies "
++                    + "but " + dep.getGroupId() + ":" + dep.getArtifactId() + ":" + dep.getVersion() + ":" + dep.getClassifier()
++                    + " already was found in the list");
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private List<Dependency> enhance(List<Dependency> dependencyList) throws IOException {
+         List<Dependency> outDependencies = new ArrayList<>();
+ 
+@@ -209,18 +237,24 @@ public class BomDependenciesGeneratorMojo extends AbstractMojo {
+             }
+         }
+ 
+-        Files.list(startersDir.toPath()).filter(Files::isDirectory)
++        HashMap<String, Boolean> productizedArtifacts = RequiredProductizedArtifactsReader.getProductizedCSBArtifacts(requiredProductizedCamelSpringBootArtifactsFile);
++
++        Files.list(startersDir.toPath())
++                .filter(Files::isDirectory)
+                 // must have a pom.xml to be active
+                 .filter(d -> {
+                     File pom = new File(d.toFile(), "pom.xml");
+                     return pom.isFile() && pom.exists();
+-                }).map(dir -> {
++                })
++                .map(dir -> {
+                     Dependency dep = new Dependency();
+                     dep.setGroupId("org.apache.camel.springboot");
+                     dep.setArtifactId(dir.getFileName().toString());
+-                    dep.setVersion("${project.version}");
++                    dep.setVersion(productizedArtifacts.containsKey(dir.getFileName().toString()) ? "${project.version}"
++                        : camelCommunityVersion);
+                     return dep;
+-                }).forEach(outDependencies::add);
++                })
++                .forEach(outDependencies::add);
+ 
+         // include core starters
+         Dependency dep = new Dependency();
+@@ -241,70 +275,105 @@ public class BomDependenciesGeneratorMojo extends AbstractMojo {
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-k-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-k-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+ 
+         // include dsl starters
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-cli-connector-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-cli-connector-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-componentdsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-componentdsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-dsl-modeline-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-dsl-modeline-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-endpointdsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-endpointdsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-groovy-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-groovy-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-java-joor-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-java-joor-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-js-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-js-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-jsh-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-jsh-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-kotlin-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-kotlin-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-xml-io-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-xml-io-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-xml-jaxb-dsl-starter");
+-        dep.setVersion("${project.version}");
++        dep.setVersion(productizedArtifacts.containsKey("camel-xml-jaxb-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-yaml-dsl-starter");
++        dep.setVersion(productizedArtifacts.containsKey("camel-yaml-dsl-starter") ? "${project.version}" : camelCommunityVersion);
++        outDependencies.add(dep);
++        dep = new Dependency();
++        dep.setGroupId("org.fusesource");
++        dep.setArtifactId("camel-sap-starter");
+         dep.setVersion("${project.version}");
+         outDependencies.add(dep);
++        dep = new Dependency();
++        dep.setGroupId("org.fusesource");
++        dep.setArtifactId("camel-cics-starter");
++        dep.setVersion("${project.version}");
++        outDependencies.add(dep);
++
++        // Add Narayana starter and associated artifacts
++        dep = new Dependency();
++        dep.setGroupId("dev.snowdrop");
++        dep.setArtifactId("narayana-spring-boot-starter");
++        dep.setVersion(narayanaSpringBootVersion);
++        if (!dependencyExists(outDependencies, dep)) {
++            outDependencies.add(dep);
++        }
++
++        dep = new Dependency();
++        dep.setGroupId("dev.snowdrop");
++        dep.setArtifactId("narayana-spring-boot-core");
++        dep.setVersion(narayanaSpringBootVersion);
++        if (!dependencyExists(outDependencies, dep)) {
++            outDependencies.add(dep);
++        }
++
++        dep = new Dependency();
++        dep.setGroupId("dev.snowdrop");
++        dep.setArtifactId("narayana-spring-boot-recovery-controller");
++        dep.setVersion(narayanaSpringBootVersion);
++        if (!dependencyExists(outDependencies, dep)) {
++            outDependencies.add(dep);
++        }
+ 
+         outDependencies.sort(Comparator.comparing(d -> (d.getGroupId() + ":" + d.getArtifactId())));
+ 
+diff --git a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
+index e84319a1bc9..0ce654f3706 100644
+--- a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
++++ b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
+@@ -24,7 +24,10 @@ import java.io.StringWriter;
+ import java.nio.file.Files;
+ import java.util.ArrayList;
+ import java.util.Comparator;
++import java.util.HashMap;
+ import java.util.List;
++import java.util.function.Predicate;
++
+ import javax.xml.XMLConstants;
+ import javax.xml.parsers.DocumentBuilder;
+ import javax.xml.parsers.DocumentBuilderFactory;
+@@ -39,14 +42,28 @@ import javax.xml.xpath.XPathExpression;
+ import javax.xml.xpath.XPathExpressionException;
+ import javax.xml.xpath.XPathFactory;
+ import org.apache.commons.io.IOUtils;
++import org.apache.maven.RepositoryUtils;
++import org.apache.maven.artifact.Artifact;
++import org.apache.maven.artifact.repository.ArtifactRepository;
+ import org.apache.maven.model.Dependency;
+ import org.apache.maven.model.Exclusion;
+ import org.apache.maven.plugin.AbstractMojo;
+ import org.apache.maven.plugin.MojoExecutionException;
++import org.apache.maven.plugins.annotations.Component;
+ import org.apache.maven.plugins.annotations.LifecyclePhase;
+ import org.apache.maven.plugins.annotations.Mojo;
+ import org.apache.maven.plugins.annotations.Parameter;
+ import org.apache.maven.project.MavenProject;
++import org.eclipse.aether.RepositorySystem;
++import org.eclipse.aether.RepositorySystemSession;
++import org.eclipse.aether.artifact.DefaultArtifact;
++import org.eclipse.aether.collection.CollectRequest;
++import org.eclipse.aether.resolution.ArtifactDescriptorException;
++import org.eclipse.aether.resolution.ArtifactDescriptorRequest;
++import org.eclipse.aether.resolution.ArtifactDescriptorResult;
++import org.eclipse.aether.resolution.ArtifactResult;
++import org.eclipse.aether.resolution.DependencyRequest;
++import org.eclipse.aether.resolution.DependencyResolutionException;
+ import org.w3c.dom.Document;
+ import org.w3c.dom.Element;
+ import org.w3c.dom.Node;
+@@ -79,6 +96,27 @@ public class BomGeneratorMojo extends AbstractMojo {
+     @Parameter(defaultValue = "${basedir}/../../components-starter")
+     protected File startersDir;
+ 
++    @Parameter(defaultValue = "${basedir}/../../product/src/main/resources/required-productized-camel-artifacts.txt")
++    protected File requiredProductizedCamelSpringBootArtifactsFile;
++
++    @Parameter(property = "bom.camelCommunityVersion", defaultValue = "${camel-spring-boot-community.version}")
++    protected String camelCommunityVersion;
++
++    @Parameter(property = "bom.narayanaSpringBoootVersion", defaultValue = "${narayana-spring-boot.version}")
++    protected String narayanaSpringBootVersion;
++
++    @Parameter(property = "bom.camelVersion", defaultValue = "${camel-version}")
++    protected String camelVersion;
++
++    @Component
++    protected RepositorySystem repositorySystem;
++
++    @Parameter(defaultValue="${repositorySystemSession}", readonly = true, required = true)
++    protected RepositorySystemSession repoSession;
++
++    @Parameter(property = "project.remoteArtifactRepositories", readonly = true, required = true)
++    protected List<ArtifactRepository> remoteRepositories;
++
+     @Override
+     public void execute() throws MojoExecutionException {
+         try {
+@@ -95,124 +133,185 @@ public class BomGeneratorMojo extends AbstractMojo {
+     private List<Dependency> starters() throws IOException {
+         List<Dependency> outDependencies = new ArrayList<>();
+ 
+-        Files.list(startersDir.toPath()).filter(Files::isDirectory)
++        HashMap<String, Boolean> productizedArtifacts = RequiredProductizedArtifactsReader.getProductizedCSBArtifacts(requiredProductizedCamelSpringBootArtifactsFile);
++
++        for (String s : productizedArtifacts.keySet()) {
++            System.out.println("Starter [" + s  + "] " + productizedArtifacts.get(s));
++        }
++
++        Files.list(startersDir.toPath())
++                .filter(Files::isDirectory)
+                 // must have a pom.xml to be active
+                 .filter(d -> {
+                     File pom = new File(d.toFile(), "pom.xml");
+                     return pom.isFile() && pom.exists();
+-                }).map(dir -> {
++                })
++                .map(dir -> {
+                     Dependency dep = new Dependency();
+                     dep.setGroupId("org.apache.camel.springboot");
+                     dep.setArtifactId(dir.getFileName().toString());
+-                    dep.setVersion(project.getVersion());
++                    dep.setVersion(productizedArtifacts.containsKey(dir.getFileName().toString()) ? "${project.version}"
++                        : camelCommunityVersion);
+                     return dep;
+-                }).forEach(outDependencies::add);
++                })
++                .forEach(outDependencies::add);
+ 
+         // include core starters
+         Dependency dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-spring-boot-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-spring-boot-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-spring-boot-engine-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-spring-boot-engine-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-spring-boot-xml-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-spring-boot-xml-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-k-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-k-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+ 
+         // include base jars
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-spring-boot-xml");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion("${project.version}");
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-spring-boot");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion("${project.version}");
+         outDependencies.add(dep);
+         // include maven plugin
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-spring-boot-generator-maven-plugin");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion("${project.version}");
+         outDependencies.add(dep);
+ 
+         // include dsl starters
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-cli-connector-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-cli-connector-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-componentdsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-componentdsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-dsl-modeline-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-dsl-modeline-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-endpointdsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-endpointdsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-groovy-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-groovy-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-java-joor-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-java-joor-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-js-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-js-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-jsh-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-jsh-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-kotlin-api-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-kotlin-api-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-kotlin-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-kotlin-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-xml-io-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-xml-io-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-xml-jaxb-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-xml-jaxb-dsl-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-yaml-dsl-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-yaml-dsl-starter") ? "${project.version}" : camelCommunityVersion);
++        outDependencies.add(dep);
++
++        dep = new Dependency();
++        dep.setGroupId("org.fusesource");
++        dep.setArtifactId("camel-sap-starter");
++        dep.setVersion("${project.version}");
++        outDependencies.add(dep);
++        dep = new Dependency();
++        dep.setGroupId("org.fusesource");
++        dep.setArtifactId("camel-cics-starter");
++        dep.setVersion("${project.version}");
++        outDependencies.add(dep);
++
++        // Add Narayana starter and associated artifacts
++        dep = new Dependency();
++        dep.setGroupId("dev.snowdrop");
++        dep.setArtifactId("narayana-spring-boot-starter");
++        dep.setVersion(narayanaSpringBootVersion);
++        outDependencies.add(dep);
++
++        dep = new Dependency();
++        dep.setGroupId("dev.snowdrop");
++        dep.setArtifactId("narayana-spring-boot-core");
++        dep.setVersion(narayanaSpringBootVersion);
++        outDependencies.add(dep);
++
++        dep = new Dependency();
++        dep.setGroupId("dev.snowdrop");
++        dep.setArtifactId("narayana-spring-boot-recovery-controller");
++        dep.setVersion(narayanaSpringBootVersion);
++        outDependencies.add(dep);
++
++        // Add Agroal using the same version used in Narayana tests
++        String agroalVersion = resolveAgroalVersion();
++
++        dep = new Dependency();
++        dep.setGroupId("io.agroal");
++        dep.setArtifactId("agroal-spring-boot-starter");
++        dep.setVersion(agroalVersion);
++        outDependencies.add(dep);
++
++        dep = new Dependency();
++        dep.setGroupId("io.agroal");
++        dep.setArtifactId("agroal-api");
++        dep.setVersion(agroalVersion);
++        outDependencies.add(dep);
++
++        dep = new Dependency();
++        dep.setGroupId("io.agroal");
++        dep.setArtifactId("agroal-pool");
++        dep.setVersion(agroalVersion);
+         outDependencies.add(dep);
+ 
+         outDependencies.sort(Comparator.comparing(d -> (d.getGroupId() + ":" + d.getArtifactId())));
+@@ -220,13 +319,35 @@ public class BomGeneratorMojo extends AbstractMojo {
+         // include some dependencies for testing and management
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel");
++        dep.setArtifactId("camel-management");
++        dep.setVersion(camelCommunityVersion);
++        outDependencies.add(dep);
++        dep = new Dependency();
++        dep.setGroupId("org.apache.camel");
+         dep.setArtifactId("camel-test-spring-junit5");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion("${camel-version}");
+         outDependencies.add(dep);
+ 
+         return outDependencies;
+     }
+ 
++    private String resolveAgroalVersion() {
++        List<ArtifactResult> artifactResults = resolveProjectDependencies(
++            "dev.snowdrop",
++            "narayana-spring-boot-starter-it",
++            narayanaSpringBootVersion,
++            artifact -> artifact.getGroupId().equals("io.agroal")
++                && artifact.getArtifactId().equals("agroal-api")
++        );
++        if (artifactResults.isEmpty()) {
++            throw new IllegalStateException("No agroal-api version found");
++        }
++        if (artifactResults.size() > 1) {
++            throw new IllegalStateException("Multiple agroal-api versions found");
++        }
++        return artifactResults.get(0).getArtifact().getVersion();
++    }
++
+     private Document loadBasePom() throws Exception {
+         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+         dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, Boolean.TRUE);
+@@ -390,4 +511,39 @@ public class BomGeneratorMojo extends AbstractMojo {
+         }
+     }
+ 
++    /**
++     * Finds dependencies from a project.
++     * E.g.: You may use this to find out witch version of <b>io.agroal:agroal-pool</b> is used by <b>me.snowdrop:narayana-spring-boot-starter-it:3.2.0</b>
++     */
++    private List<ArtifactResult> resolveProjectDependencies(String projectGroup, String projectArtifactId, String projectVersion, Predicate<Artifact> dependenciesFilter) {
++        String artifactStr = String.format("%s:%s:%s", projectGroup, projectArtifactId, projectVersion);
++        org.eclipse.aether.artifact.Artifact artifact = new DefaultArtifact(artifactStr);
++
++        ArtifactDescriptorRequest descriptorRequest = new ArtifactDescriptorRequest();
++        descriptorRequest.setArtifact(artifact);
++        descriptorRequest.setRepositories(RepositoryUtils.toRepos(remoteRepositories));
++        ArtifactDescriptorResult descriptorResult = null;
++        try {
++            descriptorResult = repositorySystem.readArtifactDescriptor(repoSession, descriptorRequest);
++        } catch (ArtifactDescriptorException e) {
++            throw new RuntimeException("Failed to read artifact descriptor", e);
++        }
++
++        CollectRequest collectRequest = new CollectRequest();
++        collectRequest.setRootArtifact(descriptorResult.getArtifact());
++        collectRequest.setDependencies(descriptorResult.getDependencies());
++        collectRequest.setManagedDependencies(descriptorResult.getManagedDependencies());
++        collectRequest.setRepositories(descriptorRequest.getRepositories());
++
++        DependencyRequest dependencyRequest = new DependencyRequest(collectRequest,
++            (node, parents) -> dependenciesFilter.test(RepositoryUtils.toArtifact(node.getArtifact()))
++        );
++
++        try {
++            return repositorySystem.resolveDependencies(repoSession, dependencyRequest).getArtifactResults();
++        } catch (DependencyResolutionException e) {
++            throw new RuntimeException("Failed to resolve dependencies", e);
++        }
++    }
++
+ }
+diff --git a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/RequiredProductizedArtifactsReader.java b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/RequiredProductizedArtifactsReader.java
+new file mode 100644
+index 00000000000..dc07ffe81a8
+--- /dev/null
++++ b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/RequiredProductizedArtifactsReader.java
+@@ -0,0 +1,58 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.camel.springboot.maven;
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileReader;
++import java.io.IOException;
++
++import java.util.HashMap;
++
++/**
++ * Utility class to read in the list of required productized artifacts.
++ **/
++ public class RequiredProductizedArtifactsReader {
++    /**
++     * Reads in the list of required productized camel-spring-boot artifacts from the file.
++     *
++     *  @return map of required productized camel-spring-boot artifacts
++     **/
++    public static HashMap<String, Boolean> getProductizedCSBArtifacts(File requiredFile) {
++        HashMap<String, Boolean> map = new HashMap<>();
++
++        try {
++            FileReader fileReader = new FileReader(requiredFile);
++            BufferedReader br = new BufferedReader(fileReader);
++
++            String line;
++            while ((line = br.readLine()) != null) {
++                if (line.startsWith("#")) {
++                    continue;
++                }
++                
++                if (!map.containsKey(line)) {
++                    map.put(line, true);
++                } else {
++                    map.replace(line, true);
++                }
++            }
++        } catch (IOException ioe) {
++            throw new RuntimeException(ioe);
++        }
++        return map;
++    }
++}
+-- 
+2.46.0
+
