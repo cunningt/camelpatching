@@ -1,0 +1,25 @@
+From 23f5d2e3fa6e7037d7d20f01ff1f662a2b036a09 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Fri, 25 Oct 2024 12:29:37 -0400
+Subject: [PATCH] Add camel-community.version to sync-properties-maven-plugin
+ exceptions
+
+---
+ .../apache/camel/maven/sync/properties/SyncPropertiesMojo.java   | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java b/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java
+index 42b58630f8b1..4268dba4936a 100644
+--- a/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java
++++ b/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java
+@@ -177,6 +177,7 @@ public class SyncPropertiesMojo extends AbstractMojo {
+         if (checkForInvalidVersions.booleanValue()) {
+             List invalidProperties = Stream.concat(camelParentPomXmlModel.getProperties().entrySet().stream(),
+                     camelPomXmlModel.getProperties().entrySet().stream()
++                            .filter(property -> !(property.getKey().equals("camel-community.version")))
+                             .filter(property -> !(property.getKey().equals("jdk.version"))))
+                     .filter(property -> invalids.test((String) property.getKey()) && !excludes.test((String) property.getKey()))
+                     .map(property -> property.getKey())
+-- 
+2.46.0
+

@@ -2,6 +2,8 @@
 
 $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Contents/Home";
 
+my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
+
 $vers = "4.8.1";
 $dir = "camel-spring-boot-${vers}-branch";
 $patchdir = "csbpatches";
@@ -26,12 +28,18 @@ system("git fetch upstream");
 
 sleep(10);
 
-system("git checkout -b camel-${vers}-branch upstream/${upstreambranch}");
+system("git checkout -b camel-${vers}-branch 4.8.1");
 
 sleep(3);
 
 # Change the version
 system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
+
+system("git commit -a -m \"Change versions to ${vers}-SNAPSHOT\"");
+
+if ($endpoint =~ m|endbeforepre|) {
+    exit(0);
+}
 
 # Apply pre-prod-maven-plugin patches, with check
 open (FILEH, "ls ../$patchdir/pre-*.patch | sort -u |");
@@ -72,6 +80,10 @@ system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk
 sleep(3);
 
 system("git commit -a -m \"Compile with results of prod-maven-plugin\"");
+
+if ($endpoint =~ m|endbeforepost|) {
+    exit(0);
+}
 
 # Apply post-prod-maven-plugin patches, with check
 open (FILEH, "ls ../$patchdir/post-*.patch | sort -u |");
