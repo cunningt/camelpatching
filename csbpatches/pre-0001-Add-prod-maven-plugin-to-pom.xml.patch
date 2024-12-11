@@ -1,14 +1,14 @@
-From 8d8e21b7d9c0af11e93967b23e4e9305760aa3c5 Mon Sep 17 00:00:00 2001
+From 010dfd707d58d608d16efe3d193dbebf18e5c7ec Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Mon, 7 Oct 2024 14:25:44 -0400
+Date: Thu, 5 Dec 2024 18:42:48 -0500
 Subject: [PATCH] Add prod-maven-plugin to pom.xml
 
 ---
- pom.xml | 61 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 61 insertions(+)
+ pom.xml | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 62 insertions(+)
 
 diff --git a/pom.xml b/pom.xml
-index b1d636cdaa3..07e7259336e 100644
+index 49b393e49a7..577c11b83fe 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -77,6 +77,8 @@
@@ -20,23 +20,24 @@ index b1d636cdaa3..07e7259336e 100644
          <module>archetypes</module>
      </modules>
  
-@@ -113,6 +115,15 @@
+@@ -113,6 +115,16 @@
          <!-- Camel target version -->
-         <camel-version>4.8.1-SNAPSHOT</camel-version>
+         <camel-version>4.8.2</camel-version>
  
++
 +        <!-- cq plugin version -->
-+        <cq-plugin.version>4.4.2</cq-plugin.version>
-+        <camel-community.version>4.8.0</camel-community.version>
-+        <camel-spring-boot-community.version>4.8.0</camel-spring-boot-community.version>
-+        <camel-sap.version>4.0.0.redhat-00001</camel-sap.version>
++        <cq-plugin.version>4.15.0</cq-plugin.version>
++        <camel-community-version>4.8.2</camel-community.version>
++        <camel-spring-boot-community.version>4.8.2</camel-spring-boot-community.version>
++        <camel-sap.version>4.8.0.redhat-00005</camel-sap.version>
 +        <camel-cics.version>4.8.0.redhat-00005</camel-cics.version>
 +        <!-- narayana spring boot version -->
-+        <narayana-spring-boot.version>3.0.0.redhat-00017</narayana-spring-boot.version>
++        <narayana-spring-boot.version>3.2.0.redhat-00006</narayana-spring-boot.version>
 +
          <!-- versions -->
          <aether-version>1.0.2.v20150114</aether-version>
          <arquillian-container-se-managed-version>1.0.2.Final</arquillian-container-se-managed-version>
-@@ -165,6 +176,56 @@
+@@ -165,6 +177,56 @@
          <defaultGoal>install</defaultGoal>
  
          <plugins>

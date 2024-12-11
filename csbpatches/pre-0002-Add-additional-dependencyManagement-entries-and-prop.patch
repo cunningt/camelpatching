@@ -1,33 +1,64 @@
-From d2e9b98f828b170cef41532cc318a140ea370fec Mon Sep 17 00:00:00 2001
+From 338af6d8303494cac517646633bbf50e22a22ee5 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Tue, 8 Oct 2024 08:42:44 -0400
+Date: Thu, 5 Dec 2024 18:46:36 -0500
 Subject: [PATCH] Add additional dependencyManagement entries and properties
- for tomcat and openshift-maven-plugin
 
 ---
- pom.xml | 42 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+ pom.xml | 143 +++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 141 insertions(+), 2 deletions(-)
 
 diff --git a/pom.xml b/pom.xml
-index 07e7259336e..52cf387f86e 100644
+index 577c11b83fe..1ccea195624 100644
 --- a/pom.xml
 +++ b/pom.xml
-@@ -124,6 +124,9 @@
-         <!-- narayana spring boot version -->
-         <narayana-spring-boot.version>3.0.0.redhat-00017</narayana-spring-boot.version>
+@@ -114,7 +114,7 @@
  
-+        <openshift-maven-plugin-version>1.17.0.redhat-00003</openshift-maven-plugin-version>
-+        <tomcat-version>10.1.28</tomcat-version>
+         <!-- Camel target version -->
+         <camel-version>4.8.2</camel-version>
+-
++        <camel-kamelets-version>4.8.0</camel-kamelets-version>
+ 
+         <!-- cq plugin version -->
+         <cq-plugin.version>4.15.0</cq-plugin.version>
+@@ -142,9 +142,148 @@
+         <springdoc-version>2.2.0</springdoc-version>
+         <surefire.version>${maven-surefire-plugin-version}</surefire.version>
+         <swagger-parser-v3-version>2.1.10</swagger-parser-v3-version>
+-	    <cyclonedx-maven-plugin-version>2.8.1</cyclonedx-maven-plugin-version>
++	<cyclonedx-maven-plugin-version>2.8.1</cyclonedx-maven-plugin-version>
 +
-         <!-- versions -->
-         <aether-version>1.0.2.v20150114</aether-version>
-         <arquillian-container-se-managed-version>1.0.2.Final</arquillian-container-se-managed-version>
-@@ -144,6 +147,45 @@
- 	    <cyclonedx-maven-plugin-version>2.8.1</cyclonedx-maven-plugin-version>
++        <aalto-xml-version>1.3.2</aalto-xml-version>
++        <jakarta-el-version>6.0.1</jakarta-el-version>
++        <jakarta-resource-version>2.0.0</jakarta-resource-version>
++        <jna-version>5.13.0</jna-version>
++        <jobjc-version>2.8</jobjc-version>
++        <kryo-version>2.24.0</kryo-version>
++        <org-json-json-version>20231013</org-json-json-version>
++        <parsson-version>1.0.5</parsson-version>
++        <perfmark-version>0.27.0</perfmark-version>
++        <plexus-component-metadata-plugin-version>2.1.1</plexus-component-metadata-plugin-version>
++        <tomcat-version>10.1.33</tomcat-version>
++        <snappy-java-version>1.1.10.5</snappy-java-version>
++        <woodstox-stax2-api-version>4.2.1</woodstox-stax2-api-version>
++        <!-- Added for productized build - plexus versions used by patch maven plugin -->
++        <openshift-maven-plugin-version>1.17.0.redhat-00003</openshift-maven-plugin-version>
++        <wiremock-spring-boot-version>3.0.2</wiremock-spring-boot-version>
++        <spring-session-hazelcast-version>3.3.3</spring-session-hazelcast-version>
      </properties>
  
-+    <dependencyManagement>
++<dependencyManagement>
 +        <dependencies>
++
++
++
++            <!-- org.apache.camel.kamelets:camel-kamelets-bom dependencyManagement entry
++                is necessary for PME align to the correct camel-kamelets-version -->
++            <dependency>
++                <groupId>org.apache.camel.kamelets</groupId>
++                <artifactId>camel-kamelets-bom</artifactId>
++                <version>${camel-kamelets-version}</version>
++            </dependency>
++
 +            <!-- dev.snowdrop:narayana-spring-boot-core dependencyManagement entry
 +                is necessary for PME align to the correct narayana-spring-boot.version -->
 +            <dependency>
@@ -44,11 +75,11 @@ index 07e7259336e..52cf387f86e 100644
 +            </dependency>
 +            <!-- org.fusesource:camel-cics dependencyManagement entry
 +                is necessary for PME align to the correct narayana-spring-boot.version -->
-+            <dependency>
-+                <groupId>org.fusesource</groupId>
-+                <artifactId>camel-cics</artifactId>
-+                <version>${camel-cics.version}</version>
-+            </dependency>
++                <dependency>
++                    <groupId>org.fusesource</groupId>
++                    <artifactId>camel-cics</artifactId>
++                    <version>${camel-cics.version}</version>
++                </dependency>
 +            <!-- org.eclipse.jkube:openshift-maven-plugin dependencyManagement entry
 +                is necessary for PME align to the correct openshift-maven-plugin-version -->
 +            <dependency>
@@ -63,6 +94,77 @@ index 07e7259336e..52cf387f86e 100644
 +                <artifactId>tomcat-catalina</artifactId>
 +                <version>${tomcat-version}</version>
 +            </dependency>
++            <!-- io.projectreactor.netty:reactor-netty-http dependencyManagement entry
++                is necessary for PME align to the correct reactor-netty-version -->
++            <dependency>
++                <groupId>io.projectreactor.netty</groupId>
++                <artifactId>reactor-netty-http</artifactId>
++                <version>${reactor-netty-version}</version>
++            </dependency>
++            <!-- org.json:json dependencyManagement entry
++                is necessary for PME align to the correct org-json-json-version -->
++            <dependency>
++                <groupId>org.json</groupId>
++                <artifactId>json</artifactId>
++                <version>${org-json-json-version}</version>
++            </dependency>
++
++            <!-- j2objc dependencyManagement entry
++                is necessary for PME align to the correct j2objc version -->
++            <dependency>
++                <groupId>com.google.j2objc</groupId>
++                <artifactId>j2objc-annotations</artifactId>
++                <version>${jobjc-version}</version>
++            </dependency>
++
++            <!-- jna dependencyManagement entry
++                is necessary for PME align to the correct jna version -->
++            <dependency>
++                <groupId>net.java.dev.jna</groupId>
++                <artifactId>jna-platform</artifactId>
++                <version>${jna-version}</version>
++            </dependency>
++
++            <!-- io.perfmark dependencyManagement entry
++                is necessary for PME align to the correct perfmark version -->
++            <dependency>
++                <groupId>io.perfmark</groupId>
++                <artifactId>perfmark-api</artifactId>
++                <version>${perfmark-version}</version>
++            </dependency>
++
++            <!-- com.fasterxml:aalto-xml dependencyManagement entry
++                is necessary for PME align to the correct aalto-xml -->
++            <dependency>
++                <groupId>com.fasterxml</groupId>
++                <artifactId>aalto-xml</artifactId>
++                <version>${aalto-xml-version}</version>
++            </dependency>
++
++            <!-- com.esotericsoftware.kryo:kryo dependencyManagement entry
++                is necessary for PME align to the correct kryo -->
++            <dependency>
++                <groupId>com.esotericsoftware.kryo</groupId>
++                <artifactId>kryo</artifactId>
++                <version>${kryo-version}</version>
++            </dependency>
++
++            <!-- jakarta.el dependencyManagement entry
++                is necessary for PME align to the correct jakarta.el -->
++            <dependency>
++                <groupId>jakarta.el</groupId>
++                <artifactId>jakarta.el-api</artifactId>
++                <version>${jakarta-el-version}</version>
++            </dependency>
++
++            <!-- jakarta.resource dependencyManagement entry
++                is necessary for PME align to the correct jakarta.resource -->
++            <dependency>
++                <groupId>jakarta.resource</groupId>
++                <artifactId>jakarta.resource-api</artifactId>
++                <version>${jakarta-resource-version}</version>
++            </dependency>
++
 +        </dependencies>
 +    </dependencyManagement>
  

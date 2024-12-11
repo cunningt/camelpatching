@@ -16,7 +16,7 @@ index 740d0580f62..5c793216b6b 100644
        <groupId>org.apache.camel</groupId>
        <artifactId>camel-mina</artifactId>
 -      <version>${camel-version}</version>
-+      <version>${camel-community.version}</version>
++      <version>${camel-community-version}</version>
        <scope>test</scope>
      </dependency>
      <!--START OF GENERATED CODE-->

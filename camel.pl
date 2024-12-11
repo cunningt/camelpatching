@@ -4,7 +4,7 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.8.1";
+$vers = "4.8.2";
 $dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
@@ -17,17 +17,18 @@ system("rm -rf $prodlocation");
 
 # Clone
 system("git clone git\@github.com:jboss-fuse/camel.git $dir");
-#system("git clone git\@github.com:jboss-fuse/camel.git $prodlocation");
+system("git clone git\@github.com:jboss-fuse/camel.git $prodlocation");
 
-system("cp -r ~/prod/camel $prodlocation");
+#system("cp -r ~/prod/camel $prodlocation");
 
 chdir $dir;
 system("git remote add upstream git\@github.com:apache/camel.git");
 system("git fetch upstream");
+system("git fetch upstream --tags");
 
 sleep(3);
 
-system("git checkout -b camel-${vers}-branch camel-4.8.1");
+system("git checkout -b camel-${vers}-branch camel-4.8.2");
 
 sleep(3);
 
@@ -37,6 +38,7 @@ system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk
 system("git commit -a -m \"Change versions to ${vers}-SNAPSHOT\"");
 
 if ($endpoint =~ m|endbeforepre|) {
+    print "ENDBEFOREPRE\n";
     exit(0);
 }
 
@@ -55,6 +57,13 @@ close(FILEH);
 # Copy the entire product directory
 system ("cp -r ../$prodlocation/product .");
 system ("git add product");
+
+sleep(3);
+
+if ($endpoint =~ m|endbeforeplugin|) {
+    print "ENDBEFOREPLUGIN\n";
+    exit(0);
+}
 
 sleep(3);
 

@@ -4,11 +4,11 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.8.1";
+$vers = "4.8.2";
 $dir = "camel-spring-boot-${vers}-branch";
 $patchdir = "csbpatches";
 
-$upstreambranch = "camel-spring-boot-4.8.x";
+$upstreambranch = "camel-spring-boot-4.8.2";
 $currentprodbranch = "camel-spring-boot-4.8.0-branch";
 $prodlocation = "csbprodlocation";
 
@@ -18,17 +18,18 @@ system("rm -rf $prodlocation");
 
 # Clone
 system("git clone git\@github.com:jboss-fuse/camel-spring-boot.git $dir");
-#system("git clone git\@github.com:jboss-fuse/camel-spring-boot.git $prodlocation");
+system("git clone git\@github.com:jboss-fuse/camel-spring-boot.git $prodlocation");
 
-system("cp -r ~/prod/camel-spring-boot $prodlocation");
+#system("cp -r ~/prod/camel-spring-boot $prodlocation");
 
 chdir $dir;
 system("git remote add upstream git\@github.com:apache/camel-spring-boot.git");
 system("git fetch upstream");
+system("git fetch upstream --tags");
 
 sleep(10);
 
-system("git checkout -b camel-${vers}-branch 4.8.1");
+system("git checkout -b camel-spring-boot-${vers}-branch camel-spring-boot-4.8.2");
 
 sleep(3);
 
@@ -37,22 +38,25 @@ system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk
 
 system("git commit -a -m \"Change versions to ${vers}-SNAPSHOT\"");
 
+system("cp ../rewrite.yml .");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -N -U org.openrewrite.maven:rewrite-maven-plugin:run -Drewrite.activeRecipes=com.redhat.camel-spring-boot.AddProductBranchProperties");
+
 if ($endpoint =~ m|endbeforepre|) {
     exit(0);
 }
 
 # Apply pre-prod-maven-plugin patches, with check
-open (FILEH, "ls ../$patchdir/pre-*.patch | sort -u |");
-while ($file = <FILEH>) {
-    chomp $file;
+#open (FILEH, "ls ../$patchdir/pre-*.patch | sort -u |");
+#while ($file = <FILEH>) {
+#    chomp $file;
 
-    print "\n\n\n==== APPLYING $file\n\n";
-    system("git apply --check $file");
-    system("git am --keep-cr --signoff < $file");
-    print "====\n\n\n";
+#    print "\n\n\n==== APPLYING $file\n\n";
+#    system("git apply --check $file");
+#    system("git am --keep-cr --signoff < $file");
+#    print "====\n\n\n";
 
-}
-close(FILEH);
+#}
+#close(FILEH);
 
 # Copy the entire product directory
 system ("cp -r ../$prodlocation/product .");
@@ -117,3 +121,5 @@ system("git commit -a -m \"Compile with results of prod-maven-plugin\"");
 
 # Build for final time - there should be no changes 
 system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -DskipTests clean install");
+
+system("git commit -a -m \"Build and refresh tooling\"");

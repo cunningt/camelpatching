@@ -32,8 +32,8 @@ index 7006dce0b3d8..2bd5df361ad2 100644
          <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
          <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
  
-+        <camel-community.version>4.8.0</camel-community.version>
-+        <cq-plugin-version>4.5.0</cq-plugin-version>
++        <camel-community-version>4.8.2</camel-community-version>
++        <cq-plugin-version>4.15.2</cq-plugin-version>
 +
          <site-repo-url>scpexe://people.apache.org/www/camel.apache.org/maven/</site-repo-url>
          <jdk.version>17</jdk.version>
@@ -61,7 +61,7 @@ index 7006dce0b3d8..2bd5df361ad2 100644
 +                    <dependency>
 +                        <groupId>org.apache.camel</groupId>
 +                        <artifactId>camel-package-maven-plugin</artifactId>
-+                        <version>${camel-community.version}</version>
++                        <version>${camel-community-version}</version>
 +                    </dependency>
 +                    <dependency>
 +                        <groupId>com.google.guava</groupId>
