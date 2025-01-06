@@ -38,7 +38,7 @@ system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk
 
 system("git commit -a -m \"Change versions to ${vers}-SNAPSHOT\"");
 
-system("cp ../rewrite.yml .");
+system("cp ../csb-rewrite.yml ./rewrite.yml");
 system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -N -U org.openrewrite.maven:rewrite-maven-plugin:run -Drewrite.activeRecipes=com.redhat.camel-spring-boot.AddProductBranchProperties");
 
 if ($endpoint =~ m|endbeforepre|) {

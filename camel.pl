@@ -60,6 +60,11 @@ system ("git add product");
 
 sleep(3);
 
+system("cp ../camel-rewrite.yml ./rewrite.yml");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -N -U org.openrewrite.maven:rewrite-maven-plugin:run -Drewrite.activeRecipes=com.redhat.camel.AddProductBranchProperties");
+
+sleep(3);
+
 if ($endpoint =~ m|endbeforeplugin|) {
     print "ENDBEFOREPLUGIN\n";
     exit(0);
