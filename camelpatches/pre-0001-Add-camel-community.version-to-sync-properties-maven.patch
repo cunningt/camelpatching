@@ -1,6 +1,6 @@
-From 58449ed528d6d8162b5e4e0ba5adbbb0fd070d85 Mon Sep 17 00:00:00 2001
+From f8691aeb171d90dac8a4a7bd03af1f3401640f07 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Wed, 4 Dec 2024 16:21:50 -0500
+Date: Fri, 10 Jan 2025 13:21:06 -0500
 Subject: [PATCH] Add camel-community.version to sync-properties-maven-plugin
 
 ---
@@ -8,17 +8,17 @@ Subject: [PATCH] Add camel-community.version to sync-properties-maven-plugin
  1 file changed, 1 insertion(+)
 
 diff --git a/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java b/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java
-index 52f66cfff34e..746d1f0c6654 100644
+index 11699c654ba8..99fe8709183b 100644
 --- a/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java
 +++ b/tooling/maven/sync-properties-maven-plugin/src/main/java/org/apache/camel/maven/sync/properties/SyncPropertiesMojo.java
-@@ -157,6 +157,7 @@ public class SyncPropertiesMojo extends AbstractMojo {
-         final String properties = Stream.concat(
-                 camelParentPomXmlModel.getProperties().entrySet().stream(),
-                 camelPomXmlModel.getProperties().entrySet().stream()
-+                        .filter(property -> !(property.getKey().equals("camel-community.version")))
-                         .filter(property -> property.getKey().equals("license-maven-plugin-version")))
-                 .filter(property -> includes.test((String) property.getKey()) && !excludes.test((String) property.getKey()))
-                 .map(property -> "<" + property.getKey() + ">" + property.getValue() + "</" + property.getKey() + ">")
+@@ -178,6 +178,7 @@ public class SyncPropertiesMojo extends AbstractMojo {
+             List invalidProperties = Stream.concat(camelParentPomXmlModel.getProperties().entrySet().stream(),
+                     camelPomXmlModel.getProperties().entrySet().stream()
+                             .filter(property -> !(property.getKey().equals("jdk.version"))))
++                    .filter(property -> !(property.getKey().equals("camel-community.version")))
+                     .filter(property -> invalids.test((String) property.getKey()) && !excludes.test((String) property.getKey()))
+                     .map(property -> property.getKey())
+                     .sorted()
 -- 
 2.46.0
 

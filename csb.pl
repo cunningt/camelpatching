@@ -4,11 +4,11 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.8.2";
+$vers = "4.8.3";
 $dir = "camel-spring-boot-${vers}-branch";
 $patchdir = "csbpatches";
 
-$upstreambranch = "camel-spring-boot-4.8.2";
+$upstreambranch = "camel-spring-boot-4.8.3";
 $currentprodbranch = "camel-spring-boot-4.8.0-branch";
 $prodlocation = "csbprodlocation";
 
@@ -29,7 +29,7 @@ system("git fetch upstream --tags");
 
 sleep(10);
 
-system("git checkout -b camel-spring-boot-${vers}-branch camel-spring-boot-4.8.2");
+system("git checkout -b camel-spring-boot-${vers}-branch camel-spring-boot-4.8.3");
 
 sleep(3);
 

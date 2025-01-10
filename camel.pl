@@ -4,7 +4,7 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.8.2";
+$vers = "4.8.3";
 $dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
@@ -28,7 +28,7 @@ system("git fetch upstream --tags");
 
 sleep(3);
 
-system("git checkout -b camel-${vers}-branch camel-4.8.2");
+system("git checkout -b camel-${vers}-branch camel-4.8.3");
 
 sleep(3);
 
@@ -57,11 +57,6 @@ close(FILEH);
 # Copy the entire product directory
 system ("cp -r ../$prodlocation/product .");
 system ("git add product");
-
-sleep(3);
-
-system("cp ../camel-rewrite.yml ./rewrite.yml");
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.8.8/bin/mvn -N -U org.openrewrite.maven:rewrite-maven-plugin:run -Drewrite.activeRecipes=com.redhat.camel.AddProductBranchProperties");
 
 sleep(3);
 

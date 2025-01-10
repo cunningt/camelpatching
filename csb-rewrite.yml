@@ -8,10 +8,10 @@ recipeList:
       value: 4.15.2
   - org.openrewrite.maven.AddProperty:
       key: camel-community-version
-      value: 4.8.2
+      value: 4.8.3
   - org.openrewrite.maven.AddProperty:
       key: camel-spring-boot-community.version
-      value: 4.8.2
+      value: 4.8.3
   - org.openrewrite.maven.AddProperty:
       key: camel-sap.version
       value: 4.8.0.redhat-00005
@@ -23,7 +23,7 @@ recipeList:
       value: 3.2.0.redhat-00006
   - org.openrewrite.maven.AddProperty:
       key: camel-kamelets-version
-      value: 4.8.2
+      value: 4.8.3
   - org.openrewrite.maven.AddProperty:
       key: cyclonedx-maven-plugin-version
       value: 2.8.1
