@@ -1,0 +1,25 @@
+From be32258bdd7dde92c8047b6c8e5cd512581ed72e Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 14 Jan 2025 10:01:31 -0500
+Subject: [PATCH] Enable cics / sap modules (#494)
+
+---
+ pom.xml | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index 905068f8262..33d2522e20c 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -77,6 +77,8 @@
+         <module>catalog</module>
+         <!-- <module>tests</module> disabled by camel-spring-boot-prod-maven-plugin:camel-prod-excludes -->
+         <!-- <module>docs</module> disabled by camel-spring-boot-prod-maven-plugin:camel-prod-excludes -->
++        <module>sap</module>
++        <module>cics</module>
+         <module>archetypes</module>
+     </modules>
+ 
+-- 
+2.46.0
+

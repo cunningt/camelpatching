@@ -35,7 +35,7 @@ index 00000000000..d1bcedc86aa
 +		<surefire.plugin.version>3.5.0</surefire.plugin.version>
 +		<jkube.generator.from>registry.access.redhat.com/ubi9/openjdk-17:latest</jkube.generator.from>
 +		<camel.spring.boot-version>{{ .CamelSpringBootVersion }}</camel.spring.boot-version>
-+{{ .AdditionalProperties }}
++{{ .BuildProperties }}
 +	</properties>
 +
 +	<dependencyManagement>

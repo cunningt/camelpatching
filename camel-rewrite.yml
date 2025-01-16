@@ -1,0 +1,49 @@
+---
+type: specs.openrewrite.org/v1beta/recipe
+name: com.redhat.camel-spring-boot.AddProductBranchProperties
+displayName: Add Product Branch Properties
+recipeList:
+  - org.openrewrite.maven.AddProperty:
+      key: camel-community-version
+      value: 4.8.3
+  - org.openrewrite.maven.AddProperty:
+      key: cq-plugin.version
+      value: 4.5.0
+  - org.openrewrite.maven.AddProperty:
+      key: camel-sap.version
+      value: 4.8.0.redhat-00005
+  - org.openrewrite.maven.AddPlugin:
+      groupId: org.l2x6.cq
+      artifactId: cq-camel-prod-maven-plugin
+      version: ${cq-plugin.version}
+      configuration: >
+                  <configuration>
+                    <requiredProductizedCamelArtifacts>${maven.multiModuleProjectDirectory}/product/src/main/resources/required-productized-camel-artifacts.txt</requiredProductizedCamelArtifacts>
+                    <simpleElementWhitespace>SPACE</simpleElementWhitespace>
+                    <additionalProductizedArtifactIds>
+                        <additionalProductizedArtifactId>camel</additionalProductizedArtifactId>
+                        <additionalProductizedArtifactId>camel-bom</additionalProductizedArtifactId>
+                        <additionalProductizedArtifactId>camel-core</additionalProductizedArtifactId>
+                        <additionalProductizedArtifactId>camel-dependencies</additionalProductizedArtifactId>
+                        <additionalProductizedArtifactId>camel-parent</additionalProductizedArtifactId>
+                    </additionalProductizedArtifactIds>
+                </configuration>
+      dependencies: >
+                  <dependencies>
+                      <dependency>
+                        <groupId>org.apache.camel</groupId>
+                        <artifactId>camel-package-maven-plugin</artifactId>
+                        <version>${camel-community.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>guava</artifactId>
+                        <version>32.1.1-jre</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>com.google.code.findbugs</groupId>
+                                <artifactId>jsr305</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                  </dependencies>
