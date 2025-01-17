@@ -1,0 +1,25 @@
+From ea70a651444ac93111c5e9b72f11efe4b28f0b7f Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Thu, 26 Sep 2024 11:12:02 -0400
+Subject: [PATCH] Remove .gitmodules
+
+---
+ .gitmodules | 6 ------
+ 1 file changed, 6 deletions(-)
+ delete mode 100644 .gitmodules
+
+diff --git a/.gitmodules b/.gitmodules
+deleted file mode 100644
+index 3d953ffe..00000000
+--- a/.gitmodules
++++ /dev/null
+@@ -1,6 +0,0 @@
+-[submodule ".github/actions/backport"]
+-	path = .github/actions/backport
+-	url = https://github.com/tibdex/backport
+-[submodule ".github/actions/changelog"]
+-	path = .github/actions/changelog
+-	url = https://github.com/charmixer/auto-changelog-action.git
+-- 
+2.46.0
+

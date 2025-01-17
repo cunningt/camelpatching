@@ -1,0 +1,41 @@
+From 333edb1521973ce3b2ace104e8c5d8995f952a2d Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Fri, 17 Jan 2025 11:31:36 -0500
+Subject: [PATCH] Add dependency management entries for camel-version and azure
+ to keep them aligned in PNC
+
+---
+ pom.xml | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/pom.xml b/pom.xml
+index 2a11f43f..0a7b7683 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -84,6 +84,23 @@
+         <version.com.microsoft.azure.azure-schemaregistry-kafka-avro>1.1.1</version.com.microsoft.azure.azure-schemaregistry-kafka-avro>
+     </properties>
+ 
++    <dependencyManagement>
++        <dependencies>
++            <dependency>
++                <groupId>org.apache.camel</groupId>
++                <artifactId>camel-parent</artifactId>
++                <version>${camel-version}</version>
++            </dependency>
++
++            <dependency>
++                <groupId>com.azure</groupId>
++                <artifactId>azure-identity</artifactId>
++                <version>${version.com.azure.azure-identity}</version>
++            </dependency>
++
++        </dependencies>
++    </dependencyManagement>
++
+     <developers>
+         <developer>
+             <name>The Apache Camel Team</name>
+-- 
+2.46.0
+
