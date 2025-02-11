@@ -1,8 +1,8 @@
-From 7429c22c5c94358036283c1147036857d9ba1325 Mon Sep 17 00:00:00 2001
+From fd4023c08ca1d017af50f78d27b5cc1c1f879c65 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Wed, 18 Sep 2024 08:03:11 -0400
-Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
- productized (#2565)
+Date: Mon, 10 Feb 2025 14:31:05 -0500
+Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not 
+ productized
 
 ---
  components/camel-platform-http-main/pom.xml  | 2 +-
@@ -11,7 +11,7 @@ Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  3 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/components/camel-platform-http-main/pom.xml b/components/camel-platform-http-main/pom.xml
-index f50ea55333da..18e695d7d0b5 100644
+index b7602f2ea05e..e1ebd598c53c 100644
 --- a/components/camel-platform-http-main/pom.xml
 +++ b/components/camel-platform-http-main/pom.xml
 @@ -65,7 +65,7 @@
@@ -24,27 +24,27 @@ index f50ea55333da..18e695d7d0b5 100644
  
          <!-- test dependencies -->
 diff --git a/components/camel-platform-http-vertx/pom.xml b/components/camel-platform-http-vertx/pom.xml
-index ac4b6d2f9670..9f4fdc2aba9e 100644
+index 512147e7a918..0d7bba2b9ba5 100644
 --- a/components/camel-platform-http-vertx/pom.xml
 +++ b/components/camel-platform-http-vertx/pom.xml
-@@ -116,7 +116,7 @@
+@@ -53,7 +53,7 @@
          <dependency>
              <groupId>io.vertx</groupId>
-             <artifactId>vertx-auth-jwt</artifactId>
+             <artifactId>vertx-web</artifactId>
 -            <version>${vertx-version}</version>
 +            <version>${vertx-community-version}</version>
-             <scope>test</scope>
          </dependency>
-         <dependency>
+ 
+         <!-- test dependencies -->
 diff --git a/parent/pom.xml b/parent/pom.xml
-index 0e1379ac29b2..9c13c4ed0d4c 100644
+index 79c6f7ad0197..8828d1cf3a29 100644
 --- a/parent/pom.xml
 +++ b/parent/pom.xml
-@@ -482,6 +482,7 @@
+@@ -493,6 +493,7 @@
          <velocity-tools-version>3.1</velocity-tools-version>
-         <velocity-version>2.3</velocity-version>
-         <vertx-version>4.5.9</vertx-version>
-+        <vertx-community-version>4.5.9</vertx-community-version>
+         <velocity-version>2.4.1</velocity-version>
+         <vertx-version>4.5.12</vertx-version>
++        <vertx-community-version>4.5.12</vertx-community-version>
          <vysper-version>0.7</vysper-version>
          <web3j-version>5.0.0</web3j-version>
          <web3j-quorum-version>4.10.0</web3j-quorum-version>

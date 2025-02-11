@@ -1,4 +1,4 @@
-From a8e638aae970fbc83e970af1aba22d1f679eec1a Mon Sep 17 00:00:00 2001
+From d23a23b60142b30d3fb87e4b0f2af7022762f700 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
 Date: Tue, 14 Jan 2025 15:15:01 -0500
 Subject: [PATCH] Archetype changes for product branch (#422) (#495)
@@ -205,7 +205,7 @@ index 29a04ed6d2e..554268ef11b 100644
 +spring-boot-version=${spring-boot-version}
 +openshift-maven-plugin-version=${openshift-maven-plugin-version}
 diff --git a/archetypes/pom.xml b/archetypes/pom.xml
-index 814b490a2c2..7155182c941 100644
+index 421eebd0aad..03823871160 100644
 --- a/archetypes/pom.xml
 +++ b/archetypes/pom.xml
 @@ -41,7 +41,7 @@
@@ -547,18 +547,18 @@ index 00000000000..fc304cfaa5d
 +
 +</assembly>
 diff --git a/pom.xml b/pom.xml
-index 33d2522e20c..8be2c02f85b 100644
+index 4638c1aef26..f49e61ddbf8 100644
 --- a/pom.xml
 +++ b/pom.xml
-@@ -150,6 +150,7 @@
-         <maven-javadoc-plugin-version>3.10.0</maven-javadoc-plugin-version>
-         <maven-surefire-plugin-version>3.1.2</maven-surefire-plugin-version>
-         <mycila-license-version>3.0</mycila-license-version>
+@@ -147,6 +147,7 @@
+         <maven-javadoc-plugin-version>3.11.2</maven-javadoc-plugin-version>
+         <maven-surefire-plugin-version>3.5.2</maven-surefire-plugin-version>
+         <mycila-license-version>4.6</mycila-license-version>
 +        <plexus-component-metadata-plugin-version>2.1.1</plexus-component-metadata-plugin-version>
          <springdoc-version>2.2.0</springdoc-version>
          <surefire.version>${maven-surefire-plugin-version}</surefire.version>
          <swagger-parser-v3-version>2.1.10</swagger-parser-v3-version>
-@@ -589,6 +590,26 @@
+@@ -590,6 +591,26 @@
                          </excludes>
                      </configuration>
                  </plugin>
@@ -585,7 +585,7 @@ index 33d2522e20c..8be2c02f85b 100644
              </plugins>
          </pluginManagement>
      </build>
-@@ -1035,5 +1056,11 @@
+@@ -1036,5 +1057,11 @@
              </plugins>
              </build>
          </profile>
