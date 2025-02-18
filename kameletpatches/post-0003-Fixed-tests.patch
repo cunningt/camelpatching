@@ -1,17 +1,25 @@
-From 756c27755fea788f46ad29a32c1f23387eac586a Mon Sep 17 00:00:00 2001
-From: Andrea Cosentino <ancosen@gmail.com>
-Date: Thu, 26 Sep 2024 13:52:13 +0200
+From 56325bfa1b66332bfac4df3d683796e4e4d1e801 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Mon, 17 Feb 2025 07:54:49 -0500
 Subject: [PATCH] Fixed tests
 
-Signed-off-by: Andrea Cosentino <ancosen@gmail.com>
 ---
- .../kamelets/catalog/KameletsCatalogTest.java | 54 +------------------
- 1 file changed, 1 insertion(+), 53 deletions(-)
+ .../kamelets/catalog/KameletsCatalogTest.java | 57 +------------------
+ 1 file changed, 2 insertions(+), 55 deletions(-)
 
 diff --git a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
-index 126ed5b7..a1b8766c 100644
+index 2422d3f0..9211f62b 100644
 --- a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
 +++ b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
+@@ -91,7 +91,7 @@ public class KameletsCatalogTest {
+ 
+     @Test
+     void testGetKameletsByProvider() throws Exception {
+-        List<Kamelet> c = catalog.getKameletByProvider("Apache Software Foundation");
++        List<Kamelet> c = catalog.getKameletByProvider("Red Hat");
+         assertFalse(c.isEmpty());
+         c = catalog.getKameletByProvider("Eclipse");
+         assertTrue(c.isEmpty());
 @@ -121,7 +121,7 @@ public class KameletsCatalogTest {
      void testGetKameletsByNamespace() throws Exception {
          List<Kamelet> c = catalog.getKameletsByNamespace("AWS");
@@ -21,10 +29,10 @@ index 126ed5b7..a1b8766c 100644
          c = catalog.getKameletsByGroups("Not-existing-group");
          assertTrue(c.isEmpty());
      }
-@@ -156,57 +156,36 @@ public class KameletsCatalogTest {
+@@ -156,57 +156,35 @@ public class KameletsCatalogTest {
      void testSupportedHeaders() throws Exception {
-         verifyHeaders("aws-s3-source", 20);
-         verifyHeaders("aws-s3-sink", 29);
+         verifyHeaders("aws-s3-source", 26);
+         verifyHeaders("aws-s3-sink", 35);
 -        verifyHeaders("aws-cloudtrail-source", 4);
          verifyHeaders("aws-redshift-source", 0);
          verifyHeaders("aws-not-exists", 0);
@@ -43,15 +51,15 @@ index 126ed5b7..a1b8766c 100644
 -        verifyHeaders("couchbase-sink", 2);
          verifyHeaders("dropbox-source", 0);
          verifyHeaders("dropbox-source", 0);
-         verifyHeaders("elasticsearch-index-sink", 10);
+-        verifyHeaders("elasticsearch-index-sink", 10);
 -        verifyHeaders("elasticsearch-search-source", 10);
          verifyHeaders("exec-sink", 0);
          verifyHeaders("fhir-source", 0);
 -        verifyHeaders("file-watch-source", 10);
-         verifyHeaders("ftp-source", 10);
-         verifyHeaders("ftp-sink", 8);
-         verifyHeaders("ftps-source", 10);
-         verifyHeaders("ftps-sink", 8);
+         verifyHeaders("ftp-source", 15);
+         verifyHeaders("ftp-sink", 6);
+         verifyHeaders("ftps-source", 15);
+         verifyHeaders("ftps-sink", 6);
 -        verifyHeaders("github-commit-source", 7);
 -        verifyHeaders("github-event-source", 7);
 -        verifyHeaders("github-pullrequest-comment-source", 7);
@@ -64,8 +72,8 @@ index 126ed5b7..a1b8766c 100644
          verifyHeaders("google-pubsub-sink", 3);
          verifyHeaders("google-pubsub-source", 5);
 -        verifyHeaders("google-sheets-source", 6);
--        verifyHeaders("google-storage-source", 20);
--        verifyHeaders("google-storage-sink", 13);
+-        verifyHeaders("google-storage-source", 21);
+-        verifyHeaders("google-storage-sink", 15);
          verifyHeaders("http-source", 5);
          verifyHeaders("http-sink", 14);
          verifyHeaders("http-secured-source", 5);
@@ -79,7 +87,7 @@ index 126ed5b7..a1b8766c 100644
          verifyHeaders("jms-amqp-10-source", 15);
          verifyHeaders("jms-amqp-10-sink", 18);
          verifyHeaders("jms-apache-artemis-source", 15);
-@@ -217,63 +196,32 @@ public class KameletsCatalogTest {
+@@ -217,63 +195,32 @@ public class KameletsCatalogTest {
          verifyHeaders("kafka-sink", 5);
          verifyHeaders("kafka-ssl-source", 9);
          verifyHeaders("kafka-ssl-sink", 5);
@@ -93,8 +101,8 @@ index 126ed5b7..a1b8766c 100644
 -        verifyHeaders("mail-sink", 8);
          verifyHeaders("mariadb-source", 0);
          verifyHeaders("mariadb-sink", 8);
-         verifyHeaders("minio-source", 14);
-         verifyHeaders("minio-sink", 22);
+         verifyHeaders("minio-source", 15);
+         verifyHeaders("minio-sink", 23);
 -        verifyHeaders("mongodb-changes-stream-source", 3);
 -        verifyHeaders("mongodb-sink", 12);
          verifyHeaders("mongodb-source", 3);
@@ -121,8 +129,8 @@ index 126ed5b7..a1b8766c 100644
 -        verifyHeaders("salesforce-composite-upsert-sink", 1);
          verifyHeaders("salesforce-source", 19);
          verifyHeaders("scp-sink", 0);
-         verifyHeaders("sftp-sink", 8);
-         verifyHeaders("sftp-source", 10);
+         verifyHeaders("sftp-sink", 6);
+         verifyHeaders("sftp-source", 15);
          verifyHeaders("slack-sink", 0);
          verifyHeaders("slack-source", 0);
 -        verifyHeaders("splunk-hec-sink", 1);
@@ -144,5 +152,5 @@ index 126ed5b7..a1b8766c 100644
  
      void verifyHeaders(String name, int expected) {
 -- 
-2.46.0
+2.48.1
 
