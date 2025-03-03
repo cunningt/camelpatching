@@ -1,0 +1,24 @@
+From ac290331d336a2105bc9fe9b6b051e1fb8ae9cce Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Mon, 3 Mar 2025 14:13:01 -0500
+Subject: [PATCH] Use community jetty-starter with cxf-rest-starter
+
+---
+ components-starter/camel-cxf-rest-starter/pom.xml | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/components-starter/camel-cxf-rest-starter/pom.xml b/components-starter/camel-cxf-rest-starter/pom.xml
+index 32c78442978..6c133a50467 100644
+--- a/components-starter/camel-cxf-rest-starter/pom.xml
++++ b/components-starter/camel-cxf-rest-starter/pom.xml
+@@ -53,6 +53,7 @@
+     <dependency>
+       <groupId>org.apache.camel.springboot</groupId>
+       <artifactId>camel-jetty-starter</artifactId>
++      <version>${camel-spring-boot-community.version}</version>
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-- 
+2.48.1
+

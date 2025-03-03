@@ -14,9 +14,9 @@ index 577c11b83fe..1ccea195624 100644
 @@ -114,7 +114,7 @@
  
          <!-- Camel target version -->
-         <camel-version>4.8.3</camel-version>
+         <camel-version>4.10.1</camel-version>
 -
-+        <camel-kamelets-version>4.8.0</camel-kamelets-version>
++        <camel-kamelets-version>4.10.1</camel-kamelets-version>
  
          <!-- cq plugin version -->
          <cq-plugin.version>4.15.0</cq-plugin.version>
