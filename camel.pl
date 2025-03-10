@@ -4,11 +4,11 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.8.3";
+$vers = "4.8.5";
 $dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
-$currentprodbranch = "camel-4.8.0-branch";
+$currentprodbranch = "camel-4.8.3-branch";
 $prodlocation = "prodlocation";
 
 # Clean up directories
@@ -17,7 +17,7 @@ system("rm -rf $prodlocation");
 
 # Clone
 system("git clone git\@github.com:jboss-fuse/camel.git $dir");
-system("git clone git\@github.com:jboss-fuse/camel.git $prodlocation");
+system("git clone -b $currentprodbranch git\@github.com:jboss-fuse/camel.git $prodlocation");
 
 #system("cp -r ~/prod/camel $prodlocation");
 
@@ -28,7 +28,7 @@ system("git fetch upstream --tags");
 
 sleep(3);
 
-system("git checkout -b camel-${vers}-branch camel-4.8.3");
+system("git checkout -b camel-${vers}-branch camel-${vers}");
 
 sleep(3);
 
