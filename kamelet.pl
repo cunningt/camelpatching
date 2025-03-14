@@ -4,11 +4,11 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@17/17.0.12/libexec/openjdk.jdk/C
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.10.0";
+$vers = "4.10.2";
 $dir = "camel-kamelets-${vers}-branch";
 $patchdir = "kameletpatches";
 
-$currentprodbranch = "camel-kamelets-4.8.3-branch";
+$currentprodbranch = "camel-kamelets-4.10.0-branch";
 $prodlocation = "kameletprodlocation";
 
 # Clean up directories
