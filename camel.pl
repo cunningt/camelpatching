@@ -1,15 +1,15 @@
 #!/usr/bin/perl
 
-$ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.4/libexec/openjdk.jdk/Contents/Home";
+$ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.6/libexec/openjdk.jdk/Contents/Home";
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.10.2";
+$vers = "4.10.3";
 $dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
 $upstreambranch = "camel-$vers";
-$currentprodbranch = "camel-4.10.1-branch";
+$currentprodbranch = "camel-4.10.2-branch";
 $prodlocation = "prodlocation";
 
 # Clean up directories
@@ -34,7 +34,7 @@ system("git checkout -b camel-${vers}-branch $upstreambranch");
 sleep(3);
 
 # Change the version
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.6/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
 
 system("git commit -a -m \"Change versions to ${vers}-SNAPSHOT\"");
 
@@ -68,14 +68,14 @@ if ($endpoint =~ m|endbeforeplugin|) {
 
 sleep(3);
 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn org.l2x6.cq:cq-camel-prod-maven-plugin:camel-prod-excludes -N");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.6/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn org.l2x6.cq:cq-camel-prod-maven-plugin:camel-prod-excludes -N");
 
 sleep(3);
 
 system("git add .mvn/excludes.txt");
 system("git commit -a -m \"Run prod-maven-plugin for the first time\"");
 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.6/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
 
 sleep(3);
 
@@ -99,4 +99,4 @@ close(FILEH);
 sleep(3);
 
 # Build for final time - there should be no changes 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.4/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@21/21.0.6/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
