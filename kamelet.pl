@@ -1,14 +1,14 @@
 #!/usr/bin/perl
 
-$ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@17/17.0.12/libexec/openjdk.jdk/Contents/Home";
+$ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@17/17.0.14/libexec/openjdk.jdk/Contents/Home";
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.10.2";
+$vers = "4.10.3";
 $dir = "camel-kamelets-${vers}-branch";
 $patchdir = "kameletpatches";
 
-$currentprodbranch = "camel-kamelets-4.10.0-branch";
+$currentprodbranch = "camel-kamelets-4.10.2-branch";
 $prodlocation = "kameletprodlocation";
 
 # Clean up directories
@@ -17,7 +17,7 @@ system("rm -rf $prodlocation");
 
 # Clone
 system("git clone git\@github.com:jboss-fuse/camel-kamelets.git $dir");
-system("git clone git\@github.com:jboss-fuse/camel-kamelets.git $prodlocation");
+system("git clone  -b $currentprodbranch git\@github.com:jboss-fuse/camel-kamelets.git $prodlocation");
 
 chdir $dir;
 system("git remote add upstream git\@github.com:apache/camel-kamelets.git");
@@ -31,7 +31,7 @@ system("git checkout -b ${dir} v${vers}");
 sleep(3);
 
 # Change the version
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.12/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.14/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DnewVersion=${vers}-SNAPSHOT -DgenerateBackupPoms=false versions:set");
 
 system("git commit -a -m \"Change versions to ${vers}-SNAPSHOT\"");
 
@@ -56,7 +56,7 @@ if ($endpoint =~ m|endbeforepre|) {
     exit(0);
 }
 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.12/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.14/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
 
 sleep(3);
 
@@ -84,11 +84,11 @@ close(FILEH);
 sleep(3);
 
 # Build for final time - there should be no changes 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.12/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.14/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
 
 print "gsed -i -e 's/camel.apache.org\\\/provider: \"Apache Software Foundation\"/camel.apache.org\\\/provider: \"Red Hat\"/g' \$(find . -type f)\n";
 system("gsed -i -e 's/camel.apache.org\\\/provider: \"Apache Software Foundation\"/camel.apache.org\\\/provider: \"Red Hat\"/g' \$(find . -type f)");
 
 system("git commit -a -m\"RHBAC-70 - Kamelets Catalog: Change metadata to reflect Red Hat catalog\"");
 
-system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.12/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");
+system("export JAVA_HOME=/opt/homebrew/Cellar/openjdk\@17/17.0.14/libexec/openjdk.jdk/Contents/Home; /usr/local/apache-maven-3.9.9/bin/mvn -DskipTests clean install");

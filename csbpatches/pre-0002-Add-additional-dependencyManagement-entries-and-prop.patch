@@ -16,7 +16,7 @@ index 577c11b83fe..1ccea195624 100644
          <!-- Camel target version -->
          <camel-version>4.10.1</camel-version>
 -
-+        <camel-kamelets-version>4.10.1</camel-kamelets-version>
++        <camel-kamelets-version>4.10.3</camel-kamelets-version>
  
          <!-- cq plugin version -->
          <cq-plugin.version>4.15.0</cq-plugin.version>
@@ -37,13 +37,13 @@ index 577c11b83fe..1ccea195624 100644
 +        <parsson-version>1.0.5</parsson-version>
 +        <perfmark-version>0.27.0</perfmark-version>
 +        <plexus-component-metadata-plugin-version>2.1.1</plexus-component-metadata-plugin-version>
-+        <tomcat-version>10.1.33</tomcat-version>
-+        <snappy-java-version>1.1.10.5</snappy-java-version>
++        <tomcat-version>10.1.39</tomcat-version>
++        <snappy-java-version>1.1.10.7</snappy-java-version>
 +        <woodstox-stax2-api-version>4.2.1</woodstox-stax2-api-version>
 +        <!-- Added for productized build - plexus versions used by patch maven plugin -->
-+        <openshift-maven-plugin-version>1.17.0.redhat-00003</openshift-maven-plugin-version>
++        <openshift-maven-plugin-version>1.18.1.redhat-00007</openshift-maven-plugin-version>
 +        <wiremock-spring-boot-version>3.0.2</wiremock-spring-boot-version>
-+        <spring-session-hazelcast-version>3.3.3</spring-session-hazelcast-version>
++        <spring-session-hazelcast-version>3.4.2</spring-session-hazelcast-version>
      </properties>
  
 +<dependencyManagement>
