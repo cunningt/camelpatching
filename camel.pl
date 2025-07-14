@@ -4,7 +4,7 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.6/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.10.5";
+$vers = "4.10.6";
 $dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
