@@ -1,0 +1,256 @@
+From b1042321abe8671c35097977717f4f669bb949ba Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Fri, 25 Jul 2025 10:41:31 -0400
+Subject: [PATCH] Archetype: adds MicroShift profile
+
+---
+ .../camel-archetype-spring-boot/pom.xml       | 29 ++++++++++++++++
+ .../resources/archetype-resources/pom.xml     | 33 +++++++++++++++++++
+ .../resources/archetype-resources/readme.adoc | 21 ++++++++++++
+ .../projects/build-it/archetype.properties    |  8 -----
+ .../deploy-on-microshift/archetype.properties | 20 +++++++++++
+ .../projects/deploy-on-microshift/goal.txt    |  1 +
+ .../deploy-on-ocp/archetype.properties        | 20 +++++++++++
+ .../resources/projects/deploy-on-ocp/goal.txt |  1 +
+ .../projects/run-it/archetype.properties      | 10 +-----
+ 9 files changed, 126 insertions(+), 17 deletions(-)
+ create mode 100644 archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/archetype.properties
+ create mode 100644 archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/goal.txt
+ create mode 100644 archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/archetype.properties
+ create mode 100644 archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/goal.txt
+
+diff --git a/archetypes/camel-archetype-spring-boot/pom.xml b/archetypes/camel-archetype-spring-boot/pom.xml
+index 2f28c6d9856..72ff045162b 100644
+--- a/archetypes/camel-archetype-spring-boot/pom.xml
++++ b/archetypes/camel-archetype-spring-boot/pom.xml
+@@ -35,6 +35,8 @@
+ 
+     <properties>
+          <archetype.test.settingsFile>src/test/resources/settings.xml</archetype.test.settingsFile> <!-- Needed to download camel-spring-boot snapshots -->
++         <skip.ocp.tests>true</skip.ocp.tests>
++         <skip.microshift.tests>true</skip.microshift.tests>
+     </properties>
+ 
+     <build>
+@@ -71,4 +73,31 @@
+         </testResources>
+     </build>
+ 
++    <profiles>
++        <profile>
++            <id>openshift</id>
++            <activation>
++                <property>
++                    <name>archetype-cluster</name>
++                    <value>openshift</value>
++                </property>
++            </activation>
++            <properties>
++                <skip.ocp.tests>false</skip.ocp.tests>
++            </properties>
++        </profile>
++        <profile>
++            <id>microshift</id>
++            <activation>
++                <property>
++                    <name>archetype-cluster</name>
++                    <value>microshift</value>
++                </property>
++            </activation>
++            <properties>
++                <skip.microshift.tests>false</skip.microshift.tests>
++            </properties>
++        </profile>
++    </profiles>
++
+ </project>
+diff --git a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml
+index 87c2108c7f0..a8a624a3462 100644
+--- a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml
++++ b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml
+@@ -36,6 +36,7 @@
+     <spring.boot-version>${spring-boot-version}</spring.boot-version>
+     <surefire.plugin.version>3.5.0</surefire.plugin.version>
+     <jkube.generator.from>registry.access.redhat.com/ubi9/openjdk-17:latest</jkube.generator.from>
++    <jkube.build.switchToDeployment>true</jkube.build.switchToDeployment>
+   </properties>
+ 
+   <dependencyManagement>
+@@ -178,5 +179,37 @@
+         </plugins>
+       </build>
+     </profile>
++    <profile>
++      <id>microshift</id>
++      <properties>
++        <jkube.build.strategy>jib</jkube.build.strategy>
++        <jkube.docker.registry>myregistry.io/myorg</jkube.docker.registry>
++        <jkube.docker.username>myregistry-user</jkube.docker.username>
++        <jkube.docker.password>myregistry-password</jkube.docker.password>
++        <!-- optional -->
++        <jkube.imagePullPolicy>Always</jkube.imagePullPolicy>
++        <jkube.docker.push.retries>3</jkube.docker.push.retries>
++      </properties>
++      <build>
++        <defaultGoal>install</defaultGoal>
++        <plugins>
++          <plugin>
++            <groupId>org.eclipse.jkube</groupId>
++            <artifactId>openshift-maven-plugin</artifactId>
++            <version>${openshift-maven-plugin-version}</version>
++            <executions>
++              <execution>
++                <goals>
++                  <goal>resource</goal>
++                  <goal>build</goal>
++                  <goal>push</goal>
++                  <goal>apply</goal>
++                </goals>
++              </execution>
++            </executions>
++          </plugin>
++        </plugins>
++      </build>
++    </profile>
+   </profiles>
+ </project>
+diff --git a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc
+index 8d63b48289d..fd326b80a03 100644
+--- a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc
++++ b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc
+@@ -28,6 +28,27 @@ You can run unit test of this example using
+ 
+     mvn clean test
+ 
++== How to deploy on OpenShift
++
++You can deploy on OpenShift using
++
++    mvn clean install -P openshift
++
++the application will be built and deployed on the current project on the logged-in OpenShift cluster, so please be sure you are correctly logged in before running the command
++
++== How to deploy on MicroShift
++
++You can deploy on MicroShift using
++
++    mvn clean install -P microshift -Djkube.docker.registry=[docker registry]
++
++the application will be deployed on the current project on the logged-in MicroShift cluster, so please be sure you are correctly logged in before running the command. Since MicroShift doesn't have an internal OCI registry, it is necessary to push/pull images externally, so a docker registry is needed (eg: `quay.io/my-organization` ) moreover if the registry is private the command requires the credentials for push and/or pull - https://eclipse.dev/jkube/docs/openshift-maven-plugin/#_pull_vs_push_authentication[documentation] eg:
++
++    mvn clean install -P microshift \
++        -Djkube.docker.registry=quay.io/my-organization \
++        -Djkube.docker.username=myuser \
++        -Djkube.docker.password=mypassword
++
+ == More information
+ 
+ You can find more information about Apache Camel at the website: http://camel.apache.org/
+diff --git a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/build-it/archetype.properties b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/build-it/archetype.properties
+index aa28a246ede..866272e060e 100644
+--- a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/build-it/archetype.properties
++++ b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/build-it/archetype.properties
+@@ -18,11 +18,3 @@ groupId=org.apache.camel.archetypes.archetypeIT.camel-archetype-spring-boot
+ artifactId=build-it
+ version=0.0.1
+ package=org.apache.camel.archetypes.archetypeIT
+-
+-# TODO: Remove these, after https://issues.apache.org/jira/browse/ARCHETYPE-574 fixed
+-camel-spring-boot-version=${project.version}
+-logback-version=${logback-version}
+-maven-compiler-plugin-version=${maven-compiler-plugin-version}
+-maven-resources-plugin-version=${maven-resources-plugin-version}
+-spring-boot-version=${spring-boot-version}
+-openshift-maven-plugin-version=${openshift-maven-plugin-version}
+diff --git a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/archetype.properties b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/archetype.properties
+new file mode 100644
+index 00000000000..f7646b1212e
+--- /dev/null
++++ b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/archetype.properties
+@@ -0,0 +1,20 @@
++## ---------------------------------------------------------------------------
++## Licensed to the Apache Software Foundation (ASF) under one or more
++## contributor license agreements.  See the NOTICE file distributed with
++## this work for additional information regarding copyright ownership.
++## The ASF licenses this file to You under the Apache License, Version 2.0
++## (the "License"); you may not use this file except in compliance with
++## the License.  You may obtain a copy of the License at
++##
++##      http://www.apache.org/licenses/LICENSE-2.0
++##
++## Unless required by applicable law or agreed to in writing, software
++## distributed under the License is distributed on an "AS IS" BASIS,
++## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++## See the License for the specific language governing permissions and
++## limitations under the License.
++## ---------------------------------------------------------------------------
++groupId=camel-archetype-spring-boot
++artifactId=deploy-on-microshift
++version=0.0.1
++package=org.apache.camel.archetypes.archetypeIT
+\ No newline at end of file
+diff --git a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/goal.txt b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/goal.txt
+new file mode 100644
+index 00000000000..129a1e918a4
+--- /dev/null
++++ b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-microshift/goal.txt
+@@ -0,0 +1 @@
++install -Dmaven.test.skip=true -P microshift -Djkube.skip=${skip.microshift.tests} -Djkube.docker.registry=${jkube.docker.registry} -Djkube.docker.username=${jkube.docker.username} -Djkube.docker.password=${jkube.docker.password}
+\ No newline at end of file
+diff --git a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/archetype.properties b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/archetype.properties
+new file mode 100644
+index 00000000000..a160928f19f
+--- /dev/null
++++ b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/archetype.properties
+@@ -0,0 +1,20 @@
++## ---------------------------------------------------------------------------
++## Licensed to the Apache Software Foundation (ASF) under one or more
++## contributor license agreements.  See the NOTICE file distributed with
++## this work for additional information regarding copyright ownership.
++## The ASF licenses this file to You under the Apache License, Version 2.0
++## (the "License"); you may not use this file except in compliance with
++## the License.  You may obtain a copy of the License at
++##
++##      http://www.apache.org/licenses/LICENSE-2.0
++##
++## Unless required by applicable law or agreed to in writing, software
++## distributed under the License is distributed on an "AS IS" BASIS,
++## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++## See the License for the specific language governing permissions and
++## limitations under the License.
++## ---------------------------------------------------------------------------
++groupId=camel-archetype-spring-boot
++artifactId=deploy-on-ocp
++version=0.0.1
++package=org.apache.camel.archetypes.archetypeIT
+\ No newline at end of file
+diff --git a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/goal.txt b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/goal.txt
+new file mode 100644
+index 00000000000..f10c9efc1fa
+--- /dev/null
++++ b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/deploy-on-ocp/goal.txt
+@@ -0,0 +1 @@
++install -Dmaven.test.skip=true -P openshift -Djkube.skip=${skip.ocp.tests}
+\ No newline at end of file
+diff --git a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/run-it/archetype.properties b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/run-it/archetype.properties
+index 554268ef11b..72558189129 100644
+--- a/archetypes/camel-archetype-spring-boot/src/test/resources/projects/run-it/archetype.properties
++++ b/archetypes/camel-archetype-spring-boot/src/test/resources/projects/run-it/archetype.properties
+@@ -17,12 +17,4 @@
+ groupId=org.apache.camel.archetypes.archetypeIT.camel-archetype-spring-boot
+ artifactId=run-it
+ version=0.0.1
+-package=org.apache.camel.archetypes.archetypeIT
+-
+-# TODO: Remove these, after https://issues.apache.org/jira/browse/ARCHETYPE-574 fixed
+-camel-spring-boot-version=${project.version}
+-logback-version=${logback-version}
+-maven-compiler-plugin-version=${maven-compiler-plugin-version}
+-maven-resources-plugin-version=${maven-resources-plugin-version}
+-spring-boot-version=${spring-boot-version}
+-openshift-maven-plugin-version=${openshift-maven-plugin-version}
++package=org.apache.camel.archetypes.archetypeIT
+\ No newline at end of file
+-- 
+2.48.1
+
