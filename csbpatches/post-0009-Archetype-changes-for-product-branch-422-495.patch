@@ -550,14 +550,6 @@ diff --git a/pom.xml b/pom.xml
 index 4638c1aef26..f49e61ddbf8 100644
 --- a/pom.xml
 +++ b/pom.xml
-@@ -147,6 +147,7 @@
-         <maven-javadoc-plugin-version>3.11.2</maven-javadoc-plugin-version>
-         <maven-surefire-plugin-version>3.5.2</maven-surefire-plugin-version>
-         <mycila-license-version>4.6</mycila-license-version>
-+        <plexus-component-metadata-plugin-version>2.1.1</plexus-component-metadata-plugin-version>
-         <springdoc-version>2.2.0</springdoc-version>
-         <surefire.version>${maven-surefire-plugin-version}</surefire.version>
-         <swagger-parser-v3-version>2.1.10</swagger-parser-v3-version>
 @@ -590,6 +591,26 @@
                          </excludes>
                      </configuration>

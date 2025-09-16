@@ -3822,7 +3822,7 @@ index 00000000000..e01db825e4b
 +                           CxfAutoConfiguration.class
 +}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 +    properties = {
-+              "camel.springboot.routes-include-pattern=file:src/test/resources/routes/CxfRsSpringProducerSessionRoute.xml"}
++              "camel.main.routes-include-pattern=file:src/test/resources/routes/CxfRsSpringProducerSessionRoute.xml"}
 +)
 +    
 +@ImportResource({
@@ -16415,7 +16415,7 @@ index 00000000000..cce85f79049
 +                           CxfAutoConfiguration.class
 +    }, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 +    properties = {
-+              "camel.springboot.routes-include-pattern=file:src/test/resources/routes/multipartRoute.xml"}
++              "camel.main.routes-include-pattern=file:src/test/resources/routes/multipartRoute.xml"}
 +)
 +    
 +@ImportResource({

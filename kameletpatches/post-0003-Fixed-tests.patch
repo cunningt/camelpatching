@@ -1,6 +1,6 @@
-From 56325bfa1b66332bfac4df3d683796e4e4d1e801 Mon Sep 17 00:00:00 2001
+From a31d00d084228df12a3f182014515f2caa40eaba Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Mon, 17 Feb 2025 07:54:49 -0500
+Date: Wed, 27 Aug 2025 14:58:56 -0400
 Subject: [PATCH] Fixed tests
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] Fixed tests
  1 file changed, 2 insertions(+), 55 deletions(-)
 
 diff --git a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
-index 2422d3f0..9211f62b 100644
+index def0db3c1..c038c445e 100644
 --- a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
 +++ b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
 @@ -91,7 +91,7 @@ public class KameletsCatalogTest {
@@ -113,12 +113,12 @@ index 2422d3f0..9211f62b 100644
          verifyHeaders("mysql-sink", 8);
          verifyHeaders("mysql-source", 0);
 -        verifyHeaders("nats-sink", 5);
--        verifyHeaders("nats-source", 5);
+-        verifyHeaders("nats-source", 7);
 -        verifyHeaders("oracle-database-sink", 8);
 -        verifyHeaders("oracle-database-source", 0);
          verifyHeaders("postgresql-sink", 8);
          verifyHeaders("postgresql-source", 0);
--        verifyHeaders("pulsar-sink", 4);
+-        verifyHeaders("pulsar-sink", 5);
 -        verifyHeaders("pulsar-source", 11);
 -        verifyHeaders("redis-sink", 29);
 -        verifyHeaders("redis-source", 28);
@@ -127,7 +127,7 @@ index 2422d3f0..9211f62b 100644
          verifyHeaders("salesforce-delete-sink", 1);
          verifyHeaders("salesforce-update-sink", 1);
 -        verifyHeaders("salesforce-composite-upsert-sink", 1);
-         verifyHeaders("salesforce-source", 19);
+         verifyHeaders("salesforce-source", 21);
          verifyHeaders("scp-sink", 0);
          verifyHeaders("sftp-sink", 6);
          verifyHeaders("sftp-source", 15);

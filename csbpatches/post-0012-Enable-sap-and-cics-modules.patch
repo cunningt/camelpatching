@@ -1,6 +1,6 @@
-From 052b6bfb9a6326680c4bf0649e72f45501cc8b04 Mon Sep 17 00:00:00 2001
+From 1df98627bb7d7389527a1b8db5d4cd6e3eeedd54 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Mon, 14 Jul 2025 10:45:33 -0400
+Date: Tue, 19 Aug 2025 11:29:08 -0400
 Subject: [PATCH] Enable sap and cics modules
 
 ---
@@ -8,7 +8,7 @@ Subject: [PATCH] Enable sap and cics modules
  1 file changed, 2 insertions(+)
 
 diff --git a/pom.xml b/pom.xml
-index 4ae333834de..6f18eb700d9 100644
+index 0dd1cdd195c..6c7cc459037 100644
 --- a/pom.xml
 +++ b/pom.xml
 @@ -78,6 +78,8 @@
