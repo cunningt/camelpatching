@@ -1,0 +1,26 @@
+From e5c5b8299f3e3c7e3f95e9f777a2a0cede6f71b5 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Fri, 4 Apr 2025 10:03:41 -0400
+Subject: [PATCH] Build is failing missing camel-yaml-io-starter - need
+ community version (#534)
+
+---
+ .../org/apache/camel/springboot/maven/BomGeneratorMojo.java     | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
+index b1356d750c1..31d866742e0 100644
+--- a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
++++ b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
+@@ -265,7 +265,7 @@ public class BomGeneratorMojo extends AbstractMojo {
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+         dep.setArtifactId("camel-yaml-io-starter");
+-        dep.setVersion(project.getVersion());
++        dep.setVersion(productizedArtifacts.containsKey("camel-yaml-io-starter") ? "${project.version}" : camelCommunityVersion);
+         outDependencies.add(dep);
+         dep = new Dependency();
+         dep.setGroupId("org.apache.camel.springboot");
+-- 
+2.48.1
+
