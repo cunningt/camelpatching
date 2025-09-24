@@ -1,8 +1,8 @@
-From fd4023c08ca1d017af50f78d27b5cc1c1f879c65 Mon Sep 17 00:00:00 2001
+From 233c9fa9868f7b6204dc785ee80ba2354176183d Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Mon, 10 Feb 2025 14:31:05 -0500
-Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not 
- productized
+Date: Tue, 23 Sep 2025 11:22:26 -0400
+Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
+ being productized
 
 ---
  components/camel-platform-http-main/pom.xml  | 2 +-
@@ -11,7 +11,7 @@ Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  3 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/components/camel-platform-http-main/pom.xml b/components/camel-platform-http-main/pom.xml
-index b7602f2ea05e..e1ebd598c53c 100644
+index 17c70e30c06e..ed77685069ba 100644
 --- a/components/camel-platform-http-main/pom.xml
 +++ b/components/camel-platform-http-main/pom.xml
 @@ -65,7 +65,7 @@
@@ -24,7 +24,7 @@ index b7602f2ea05e..e1ebd598c53c 100644
  
          <!-- test dependencies -->
 diff --git a/components/camel-platform-http-vertx/pom.xml b/components/camel-platform-http-vertx/pom.xml
-index 512147e7a918..0d7bba2b9ba5 100644
+index 82344d63b4c2..b7534133cd5a 100644
 --- a/components/camel-platform-http-vertx/pom.xml
 +++ b/components/camel-platform-http-vertx/pom.xml
 @@ -53,7 +53,7 @@
@@ -37,17 +37,17 @@ index 512147e7a918..0d7bba2b9ba5 100644
  
          <!-- test dependencies -->
 diff --git a/parent/pom.xml b/parent/pom.xml
-index 79c6f7ad0197..8828d1cf3a29 100644
+index 70ed20c4a292..f52de97413ef 100644
 --- a/parent/pom.xml
 +++ b/parent/pom.xml
-@@ -493,6 +493,7 @@
+@@ -496,6 +496,7 @@
          <velocity-tools-version>3.1</velocity-tools-version>
          <velocity-version>2.4.1</velocity-version>
-         <vertx-version>4.5.12</vertx-version>
-+        <vertx-community-version>4.5.12</vertx-community-version>
+         <vertx-version>4.5.20</vertx-version>
++        <vertx-community-version>4.5.20</vertx-community-version>
          <vysper-version>0.7</vysper-version>
          <web3j-version>5.0.0</web3j-version>
          <web3j-quorum-version>4.10.0</web3j-quorum-version>
 -- 
-2.46.0
+2.48.1
 
