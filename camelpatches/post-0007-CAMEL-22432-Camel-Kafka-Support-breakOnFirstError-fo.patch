@@ -1,0 +1,770 @@
+From ba0535c0b858b3400a832539e70ad2b623921c14 Mon Sep 17 00:00:00 2001
+From: Andrea Cosentino <ancosen@gmail.com>
+Date: Tue, 23 Sep 2025 10:29:33 +0200
+Subject: [PATCH] CAMEL-22432 - Camel-Kafka: Support breakOnFirstError for
+ Batching mode too (#19282) (#2868)
+
+* CAMEL-22432 - Camel-Kafka: Support breakOnFirstError for Batching mode too
+
+
+
+* CAMEL-22432 - Camel-Kafka: Support breakOnFirstError for Batching mode too - Docs and examples
+
+
+
+---------
+
+Signed-off-by: Andrea Cosentino <ancosen@gmail.com>
+---
+ .../src/main/docs/kafka-component.adoc        | 229 ++++++++++++++++++
+ .../KafkaRecordBatchingProcessor.java         | 118 +++++++--
+ ...BatchingProcessingBreakOnFirstErrorIT.java | 132 ++++++++++
+ ...essingBreakOnFirstErrorManualCommitIT.java | 156 ++++++++++++
+ 4 files changed, 620 insertions(+), 15 deletions(-)
+ create mode 100644 components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorIT.java
+ create mode 100644 components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT.java
+
+diff --git a/components/camel-kafka/src/main/docs/kafka-component.adoc b/components/camel-kafka/src/main/docs/kafka-component.adoc
+index 4deb01226499..83dfeffcc220 100644
+--- a/components/camel-kafka/src/main/docs/kafka-component.adoc
++++ b/components/camel-kafka/src/main/docs/kafka-component.adoc
+@@ -520,6 +520,235 @@ public void configure() {
+ }
+ ----
+ 
++===== Break on First Error in Batching Mode
++
++The `breakOnFirstError` option is also supported in batching mode, providing the same error handling behavior as in streaming mode but applied to batch processing.
++
++When `breakOnFirstError=true` is configured with batching enabled:
++
++* **Auto Commit Mode**: When an error occurs during batch processing, Camel will commit the current batch position and trigger a consumer reconnection. This allows the problematic batch to be retried on the next polling cycle.
++
++* **Manual Commit Mode**: When an error occurs, the route's error handler is responsible for performing the manual commit (if desired) before the consumer reconnects.
++
++* **Reconnection**: After an error triggers `breakOnFirstError`, the consumer automatically reconnects and resumes polling from the committed position.
++
++The behavior is consistent with streaming mode, ensuring that error handling patterns work similarly across both processing modes.
++
++Example with automatic commits:
++
++[tabs]
++====
++Java DSL::
+++
++[source,java]
++----
++from("kafka:topic?groupId=myGroup&pollTimeoutMs=1000&batching=true&maxPollRecords=10&breakOnFirstError=true&autoCommitEnable=true")
++    .process(e -> {
++        final List<?> exchanges = e.getMessage().getBody(List.class);
++        // Process batch - any exception will trigger breakOnFirstError behavior
++        for (Object exchange : exchanges) {
++            // ... processing logic
++        }
++    }).to("mock:result");
++----
++
++YAML::
+++
++[source,yaml]
++----
++- route:
++    from:
++      uri: "kafka:topic"
++      parameters:
++        groupId: "myGroup"
++        pollTimeoutMs: 1000
++        batching: true
++        maxPollRecords: 10
++        breakOnFirstError: true
++        autoCommitEnable: true
++    steps:
++      - process:
++          ref: "batchProcessor"
++      - to: "mock:result"
++----
++
++Processor Implementation::
+++
++[source,java]
++----
++@Component("batchProcessor")
++public class BatchProcessor implements Processor {
++    private static final Logger LOG = LoggerFactory.getLogger(BatchProcessor.class);
++
++    @Override
++    public void process(Exchange exchange) throws Exception {
++        final List<?> exchanges = exchange.getMessage().getBody(List.class);
++
++        if (exchanges == null || exchanges.isEmpty()) {
++            return;
++        }
++
++        // Process each exchange in the batch
++        for (Object obj : exchanges) {
++            if (obj instanceof Exchange batchExchange) {
++                String body = batchExchange.getMessage().getBody(String.class);
++                LOG.info("Processing exchange with body: {}", body);
++
++                // Your business logic here
++                // Any exception thrown will trigger breakOnFirstError behavior
++                processMessage(body);
++            }
++        }
++    }
++
++    private void processMessage(String message) {
++        // Implement your message processing logic
++        // Throw exceptions for error conditions that should trigger breakOnFirstError
++        if (message.contains("error")) {
++            throw new RuntimeException("Processing failed for message: " + message);
++        }
++    }
++}
++----
++====
++
++Example with manual commits:
++
++[tabs]
++====
++Java DSL::
+++
++[source,java]
++----
++// Error handler that performs manual commit before reconnection
++onException(Exception.class)
++    .handled(false)
++    .process(exchange -> {
++        // Commit manually when error occurs
++        KafkaManualCommit manual = exchange.getMessage()
++            .getHeader(KafkaConstants.MANUAL_COMMIT, KafkaManualCommit.class);
++        manual.commit();
++    });
++
++from("kafka:topic?groupId=myGroup&batching=true&breakOnFirstError=true&autoCommitEnable=false&allowManualCommit=true")
++    .process(e -> {
++        final List<?> exchanges = e.getMessage().getBody(List.class);
++        // Process batch - errors will be handled by the error handler above
++        for (Object exchange : exchanges) {
++            // ... processing logic
++        }
++    })
++    .process(exchange -> {
++        // Manual commit on successful processing
++        KafkaManualCommit manual = exchange.getMessage()
++            .getHeader(KafkaConstants.MANUAL_COMMIT, KafkaManualCommit.class);
++        manual.commit();
++    })
++    .to("mock:result");
++----
++
++YAML::
+++
++[source,yaml]
++----
++- route:
++    on-exception:
++      - exception: "java.lang.Exception"
++        handled: false
++        steps:
++          - process:
++              ref: "errorCommitProcessor"
++    from:
++      uri: "kafka:topic"
++      parameters:
++        groupId: "myGroup"
++        batching: true
++        breakOnFirstError: true
++        autoCommitEnable: false
++        allowManualCommit: true
++    steps:
++      - process:
++          ref: "batchProcessorManual"
++      - process:
++          ref: "successCommitProcessor"
++      - to: "mock:result"
++----
++
++Processor Implementations::
+++
++[source,java]
++----
++@Component("batchProcessorManual")
++public class BatchProcessorManual implements Processor {
++    private static final Logger LOG = LoggerFactory.getLogger(BatchProcessorManual.class);
++
++    @Override
++    public void process(Exchange exchange) throws Exception {
++        final List<?> exchanges = exchange.getMessage().getBody(List.class);
++
++        if (exchanges == null || exchanges.isEmpty()) {
++            return;
++        }
++
++        // Process each exchange in the batch
++        for (Object obj : exchanges) {
++            if (obj instanceof Exchange batchExchange) {
++                String body = batchExchange.getMessage().getBody(String.class);
++                LOG.info("Processing exchange with body: {}", body);
++
++                // Your business logic here
++                // Errors will be handled by the error handler
++                processMessage(body);
++            }
++        }
++    }
++
++    private void processMessage(String message) {
++        // Implement your message processing logic
++        if (message.contains("error")) {
++            throw new RuntimeException("Processing failed for message: " + message);
++        }
++    }
++}
++
++@Component("errorCommitProcessor")
++public class ErrorCommitProcessor implements Processor {
++    private static final Logger LOG = LoggerFactory.getLogger(ErrorCommitProcessor.class);
++
++    @Override
++    public void process(Exchange exchange) throws Exception {
++        LOG.warn("Error occurred, performing manual commit before reconnection");
++
++        KafkaManualCommit manual = exchange.getMessage()
++            .getHeader(KafkaConstants.MANUAL_COMMIT, KafkaManualCommit.class);
++
++        if (manual != null) {
++            manual.commit();
++            LOG.info("Manual commit completed after error");
++        }
++    }
++}
++
++@Component("successCommitProcessor")
++public class SuccessCommitProcessor implements Processor {
++    private static final Logger LOG = LoggerFactory.getLogger(SuccessCommitProcessor.class);
++
++    @Override
++    public void process(Exchange exchange) throws Exception {
++        LOG.debug("Batch processed successfully, performing manual commit");
++
++        KafkaManualCommit manual = exchange.getMessage()
++            .getHeader(KafkaConstants.MANUAL_COMMIT, KafkaManualCommit.class);
++
++        if (manual != null) {
++            manual.commit();
++            LOG.debug("Manual commit completed after successful processing");
++        }
++    }
++}
++----
++====
++
+ ==== Manual Commits
+ 
+ When working with batch processing with manual commits, it's up to the application to commit the records, and handle the outcome of potentially invalid records.
+diff --git a/components/camel-kafka/src/main/java/org/apache/camel/component/kafka/consumer/support/batching/KafkaRecordBatchingProcessor.java b/components/camel-kafka/src/main/java/org/apache/camel/component/kafka/consumer/support/batching/KafkaRecordBatchingProcessor.java
+index 90e4ac25998c..fba111f5306c 100644
+--- a/components/camel-kafka/src/main/java/org/apache/camel/component/kafka/consumer/support/batching/KafkaRecordBatchingProcessor.java
++++ b/components/camel-kafka/src/main/java/org/apache/camel/component/kafka/consumer/support/batching/KafkaRecordBatchingProcessor.java
+@@ -68,8 +68,24 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+         public void onFailure(Exchange exchange) {
+             Exception cause = exchange.getException();
+             if (cause != null) {
+-                exceptionHandler.handleException(
+-                        "Error during processing exchange. Will attempt to process the message on next poll.", exchange, cause);
++                // Check if breakOnFirstError should be applied
++                if (configuration.isBreakOnFirstError()) {
++                    if (LOG.isWarnEnabled()) {
++                        LOG.warn("Error during processing {} from batch due to {}", exchange, cause.getMessage());
++                        LOG.warn("Will break on first error in batch processing mode as configured.");
++                    }
++
++                    // Commit the batch where the error occurred (similar to streaming mode behavior)
++                    // This allows the consumer to move forward and potentially retry the problematic batch
++                    LOG.debug("Calling commit on {} exchanges using {} due to breakOnFirstError", size,
++                            commitManager.getClass().getSimpleName());
++                    commitManager.commit();
++                } else {
++                    // Standard error handling - just log and continue (original behavior)
++                    exceptionHandler.handleException(
++                            "Error during processing exchange. Will attempt to process the message on next poll.", exchange,
++                            cause);
++                }
+             } else {
+                 LOG.warn(
+                         "Skipping auto-commit on the batch because processing the exchanged has failed and the error was not correctly handled");
+@@ -117,9 +133,14 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+                     exchangeList.size());
+ 
+             // poll timeout has elapsed, so check for expired records
+-            processBatch(camelKafkaConsumer);
++            ProcessingResult result = processBatch(camelKafkaConsumer);
+             exchangeList.clear();
+             timeoutWatch.takenAndRestart(); // restart timer after processing expired batch
++
++            // if breakOnFirstError was hit, return immediately
++            if (result.isBreakOnErrorHit()) {
++                return result;
++            }
+         }
+ 
+         // Always add new records after handling any expiration
+@@ -130,9 +151,14 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+             exchangeList.add(childExchange);
+ 
+             if (exchangeList.size() >= configuration.getMaxPollRecords()) {
+-                processBatch(camelKafkaConsumer);
++                ProcessingResult result = processBatch(camelKafkaConsumer);
+                 exchangeList.clear();
+                 timeoutWatch.takenAndRestart(); // restart timer after batch processed
++
++                // if breakOnFirstError was hit, return immediately
++                if (result.isBreakOnErrorHit()) {
++                    return result;
++                }
+             }
+         }
+ 
+@@ -154,7 +180,7 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+         return timeout || interval;
+     }
+ 
+-    private void processBatch(KafkaConsumer camelKafkaConsumer) {
++    private ProcessingResult processBatch(KafkaConsumer camelKafkaConsumer) {
+         intervalWatch.restart();
+ 
+         // Create the bundle exchange
+@@ -163,28 +189,33 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+         var exchanges = exchangeList.stream().toList();
+         message.setBody(exchanges);
+ 
++        ProcessingResult result = ProcessingResult.newUnprocessed();
++
+         try {
+             if (configuration.isAllowManualCommit()) {
+                 Exchange last = exchanges.isEmpty() ? null : exchanges.get(exchanges.size() - 1);
+                 if (last != null) {
+                     message.setHeader(KafkaConstants.MANUAL_COMMIT, last.getMessage().getHeader(KafkaConstants.MANUAL_COMMIT));
+                 }
+-                manualCommitResultProcessing(camelKafkaConsumer, exchange);
++                result = manualCommitResultProcessing(camelKafkaConsumer, exchange, exchanges);
+             } else {
+-                autoCommitResultProcessing(camelKafkaConsumer, exchange, exchanges.size());
++                result = autoCommitResultProcessing(camelKafkaConsumer, exchange, exchanges);
+             }
+         } finally {
+             // Release the exchange
+             camelKafkaConsumer.releaseExchange(exchange, false);
+         }
++
++        return result;
+     }
+ 
+     /*
+      * The flow to execute when using auto-commit
+      */
+-    private void autoCommitResultProcessing(KafkaConsumer camelKafkaConsumer, Exchange exchange, int size) {
++    private ProcessingResult autoCommitResultProcessing(
++            KafkaConsumer camelKafkaConsumer, Exchange exchange, java.util.List<Exchange> exchanges) {
+         ExceptionHandler exceptionHandler = camelKafkaConsumer.getExceptionHandler();
+-        CommitSynchronization commitSynchronization = new CommitSynchronization(exceptionHandler, size);
++        CommitSynchronization commitSynchronization = new CommitSynchronization(exceptionHandler, exchanges.size());
+         exchange.getExchangeExtension().addOnCompletion(commitSynchronization);
+         try {
+             processor.process(exchange);
+@@ -192,14 +223,33 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+             exchange.setException(e);
+         }
+         if (exchange.getException() != null) {
+-            processException(exchange, exceptionHandler);
++            // For auto-commit mode with breakOnFirstError, we let the CommitSynchronization handle the commit
++            // but we need to return the appropriate ProcessingResult to trigger reconnection
++            if (configuration.isBreakOnFirstError()) {
++                // Find the first exchange with data to provide context for the ProcessingResult
++                Exchange firstExchange = exchanges.isEmpty() ? null : exchanges.get(0);
++                if (firstExchange != null) {
++                    Message message = firstExchange.getMessage();
++                    String topic = (String) message.getHeader(KafkaConstants.TOPIC);
++                    Integer partition = (Integer) message.getHeader(KafkaConstants.PARTITION);
++                    Long offset = (Long) message.getHeader(KafkaConstants.OFFSET);
++                    if (topic != null && partition != null && offset != null) {
++                        return new ProcessingResult(true, true, topic, partition, offset);
++                    }
++                }
++                // Fallback if no record info available
++                return new ProcessingResult(true, true);
++            }
++            // If breakOnFirstError is not enabled, let the CommitSynchronization.onFailure() handle it normally
+         }
++        return ProcessingResult.newUnprocessed();
+     }
+ 
+     /*
+      * The flow to execute when the integrations perform manual commit on their own
+      */
+-    private void manualCommitResultProcessing(KafkaConsumer camelKafkaConsumer, Exchange exchange) {
++    private ProcessingResult manualCommitResultProcessing(
++            KafkaConsumer camelKafkaConsumer, Exchange exchange, java.util.List<Exchange> exchanges) {
+         try {
+             processor.process(exchange);
+         } catch (Exception e) {
+@@ -207,12 +257,50 @@ final class KafkaRecordBatchingProcessor extends KafkaRecordProcessor {
+         }
+         if (exchange.getException() != null) {
+             ExceptionHandler exceptionHandler = camelKafkaConsumer.getExceptionHandler();
+-            processException(exchange, exceptionHandler);
++            boolean breakOnErrorHit = processException(exchange, exceptionHandler);
++            if (breakOnErrorHit) {
++                // Find the first exchange with data to provide context
++                Exchange firstExchange = exchanges.isEmpty() ? null : exchanges.get(0);
++                if (firstExchange != null) {
++                    Message message = firstExchange.getMessage();
++                    String topic = (String) message.getHeader(KafkaConstants.TOPIC);
++                    Integer partition = (Integer) message.getHeader(KafkaConstants.PARTITION);
++                    Long offset = (Long) message.getHeader(KafkaConstants.OFFSET);
++                    if (topic != null && partition != null && offset != null) {
++                        return new ProcessingResult(true, true, topic, partition, offset);
++                    }
++                }
++                // Fallback if no record info available
++                return new ProcessingResult(true, true);
++            }
+         }
++        return ProcessingResult.newUnprocessed();
+     }
+ 
+-    private void processException(Exchange exchange, ExceptionHandler exceptionHandler) {
+-        // will handle/log the exception and then continue to next
+-        exceptionHandler.handleException("Error during processing", exchange, exchange.getException());
++    private boolean processException(Exchange exchange, ExceptionHandler exceptionHandler) {
++        // processing failed due to an unhandled exception, what should we do
++        if (configuration.isBreakOnFirstError()) {
++            // we are failing and we should break out
++            if (LOG.isWarnEnabled()) {
++                Exception exc = exchange.getException();
++                LOG.warn("Error during processing {} from batch due to {}", exchange, exc.getMessage());
++                LOG.warn("Will break on first error in batch processing mode as configured.");
++            }
++
++            // when route uses NOOP Commit Manager it will rely
++            // on the route implementation to explicitly commit offset
++            // when route uses Synch/Asynch Commit Manager it will
++            // ALWAYS commit the offset for the failing record
++            // and will ALWAYS retry it
++            commitManager.commit();
++
++            // break out of processing
++            return true;
++        } else {
++            // will handle/log the exception and then continue to next
++            exceptionHandler.handleException("Error during processing", exchange, exchange.getException());
++        }
++
++        return false;
+     }
+ }
+diff --git a/components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorIT.java b/components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorIT.java
+new file mode 100644
+index 000000000000..d280abef2fbf
+--- /dev/null
++++ b/components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorIT.java
+@@ -0,0 +1,132 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.apache.camel.component.kafka.integration.batching;
++
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++
++import org.apache.camel.Exchange;
++import org.apache.camel.builder.RouteBuilder;
++import org.apache.camel.component.kafka.integration.common.KafkaTestUtil;
++import org.awaitility.Awaitility;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.Test;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++public class KafkaBatchingProcessingBreakOnFirstErrorIT extends BatchingProcessingITSupport {
++    private static final Logger LOG = LoggerFactory.getLogger(KafkaBatchingProcessingBreakOnFirstErrorIT.class);
++
++    public static final String TOPIC = "testBatchingProcessingBreakOnFirstError";
++    private volatile boolean errorThrown = false;
++
++    @AfterEach
++    public void after() {
++        cleanupKafka(TOPIC);
++    }
++
++    @Override
++    protected RouteBuilder createRouteBuilder() {
++        String from = "kafka:" + TOPIC
++                      + "?groupId=KafkaBatchingProcessingBreakOnFirstErrorIT"
++                      + "&pollTimeoutMs=1000"
++                      + "&batching=true"
++                      + "&maxPollRecords=10"
++                      + "&autoOffsetReset=earliest"
++                      + "&breakOnFirstError=true"
++                      + "&autoCommitEnable=true"; // Explicitly test auto commit mode
++
++        return new RouteBuilder() {
++
++            @Override
++            public void configure() {
++
++                from(from).routeId("batching").process(e -> {
++                    // The received records are stored as exchanges in a list. This gets the list of those exchanges
++                    final List<?> exchanges = e.getMessage().getBody(List.class);
++
++                    // Ensure we are actually receiving what we are asking for
++                    if (exchanges == null || exchanges.isEmpty()) {
++                        return;
++                    }
++
++                    // The records from the batch are stored in a list of exchanges in the original exchange.
++                    int i = 0;
++                    for (Object o : exchanges) {
++                        if (o instanceof Exchange exchange) {
++                            i++;
++                            String body = exchange.getMessage().getBody(String.class);
++                            LOG.info("Processing exchange with body {}", body);
++
++                            // Throw exception on message-3 to test breakOnFirstError
++                            if ("message-3".equals(body)) {
++                                errorThrown = true;
++                                throw new RuntimeException("ERROR TRIGGERED BY TEST for breakOnFirstError in batching mode");
++                            }
++                        }
++                    }
++                }).to(KafkaTestUtil.MOCK_RESULT);
++            }
++        };
++    }
++
++    @Test
++    public void kafkaBreakOnFirstErrorInBatchingMode() throws Exception {
++        to.reset();
++        to.expectedMinimumMessageCount(1);
++
++        // Send 6 messages where message-3 will cause an error
++        sendRecords(0, 6, TOPIC);
++
++        // Wait for the error to be thrown
++        Awaitility.await()
++                .atMost(10, TimeUnit.SECONDS)
++                .until(() -> errorThrown);
++
++        // With breakOnFirstError=true in batching mode, the processing should stop
++        // when an error occurs and no further batches should be processed
++        assertTrue(errorThrown, "Error should have been thrown on message-3");
++
++        // Reset error flag and send more messages to test reconnection
++        errorThrown = false;
++        to.reset();
++        to.expectedMinimumMessageCount(1);
++
++        // Send additional messages that should be processed after reconnection
++        // These messages don't contain "message-3" so should process successfully
++        sendRecords(10, 13, TOPIC);  // message-10, message-11, message-12
++
++        // Wait for the new messages to be processed, indicating successful reconnection
++        Awaitility.await()
++                .atMost(15, TimeUnit.SECONDS)
++                .until(() -> to.getReceivedCounter() >= 1);
++
++        to.assertIsSatisfied(3000);
++
++        // Verify that no error was thrown for the second batch (reconnection successful)
++        assertFalse(errorThrown, "No error should be thrown for the second batch after reconnection");
++
++        // The route should have encountered the error, triggered breakOnFirstError,
++        // reconnected automatically, and continued processing new messages
++        // This verifies that the breakOnFirstError functionality works in batching mode
++        // and that automatic reconnection occurs as expected
++    }
++}
+diff --git a/components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT.java b/components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT.java
+new file mode 100644
+index 000000000000..4bbf8aa7a85f
+--- /dev/null
++++ b/components/camel-kafka/src/test/java/org/apache/camel/component/kafka/integration/batching/KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT.java
+@@ -0,0 +1,156 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.apache.camel.component.kafka.integration.batching;
++
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++
++import org.apache.camel.Exchange;
++import org.apache.camel.builder.RouteBuilder;
++import org.apache.camel.component.kafka.KafkaConstants;
++import org.apache.camel.component.kafka.consumer.KafkaManualCommit;
++import org.apache.camel.component.kafka.integration.common.KafkaTestUtil;
++import org.awaitility.Awaitility;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.Test;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertNotNull;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++public class KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT extends BatchingProcessingITSupport {
++    private static final Logger LOG = LoggerFactory.getLogger(KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT.class);
++
++    public static final String TOPIC = "testBatchingProcessingBreakOnFirstErrorManualCommit";
++    private volatile boolean errorThrown = false;
++
++    @AfterEach
++    public void after() {
++        cleanupKafka(TOPIC);
++    }
++
++    @Override
++    protected RouteBuilder createRouteBuilder() {
++        String from = "kafka:" + TOPIC
++                      + "?groupId=KafkaBatchingProcessingBreakOnFirstErrorManualCommitIT"
++                      + "&pollTimeoutMs=1000"
++                      + "&batching=true"
++                      + "&maxPollRecords=10"
++                      + "&autoOffsetReset=earliest"
++                      + "&breakOnFirstError=true"
++                      + "&autoCommitEnable=false"  // Test manual commit mode
++                      + "&allowManualCommit=true";
++
++        return new RouteBuilder() {
++
++            @Override
++            public void configure() {
++                onException(Exception.class)
++                        .handled(false)
++                        // Process the error and manually commit if needed
++                        .process(exchange -> {
++                            errorThrown = true;
++                            LOG.info("Error occurred, performing manual commit");
++                            doCommitOffset(exchange);
++                        });
++
++                from(from).routeId("batching").process(e -> {
++                    // The received records are stored as exchanges in a list. This gets the list of those exchanges
++                    final List<?> exchanges = e.getMessage().getBody(List.class);
++
++                    // Ensure we are actually receiving what we are asking for
++                    if (exchanges == null || exchanges.isEmpty()) {
++                        return;
++                    }
++
++                    // The records from the batch are stored in a list of exchanges in the original exchange.
++                    int i = 0;
++                    for (Object o : exchanges) {
++                        if (o instanceof Exchange exchange) {
++                            i++;
++                            String body = exchange.getMessage().getBody(String.class);
++                            LOG.info("Processing exchange with body {}", body);
++
++                            // Throw exception on message-3 to test breakOnFirstError
++                            if ("message-3".equals(body)) {
++                                throw new RuntimeException(
++                                        "ERROR TRIGGERED BY TEST for breakOnFirstError in batching mode with manual commit");
++                            }
++                        }
++                    }
++                }).to(KafkaTestUtil.MOCK_RESULT)
++                        .process(exchange -> {
++                            // Manual commit on success
++                            doCommitOffset(exchange);
++                        });
++            }
++        };
++    }
++
++    private void doCommitOffset(Exchange exchange) {
++        LOG.debug("Performing manual commit");
++        KafkaManualCommit manual = exchange.getMessage()
++                .getHeader(KafkaConstants.MANUAL_COMMIT, KafkaManualCommit.class);
++        assertNotNull(manual);
++        manual.commit();
++    }
++
++    @Test
++    public void kafkaBreakOnFirstErrorInBatchingModeWithManualCommit() throws Exception {
++        to.reset();
++        to.expectedMinimumMessageCount(1);
++
++        // Send 6 messages where message-3 will cause an error
++        sendRecords(0, 6, TOPIC);
++
++        // Wait for the error to be thrown
++        Awaitility.await()
++                .atMost(10, TimeUnit.SECONDS)
++                .until(() -> errorThrown);
++
++        // With breakOnFirstError=true in batching mode with manual commit,
++        // the processing should stop when an error occurs and the error handler should commit
++        assertTrue(errorThrown, "Error should have been thrown on message-3");
++
++        // Reset error flag and send more messages to test reconnection
++        errorThrown = false;
++        to.reset();
++        to.expectedMinimumMessageCount(1);
++
++        // Send additional messages that should be processed after reconnection
++        // These messages don't contain "message-3" so should process successfully
++        sendRecords(20, 23, TOPIC);  // message-20, message-21, message-22
++
++        // Wait for the new messages to be processed, indicating successful reconnection
++        Awaitility.await()
++                .atMost(15, TimeUnit.SECONDS)
++                .until(() -> to.getReceivedCounter() >= 1);
++
++        to.assertIsSatisfied(3000);
++
++        // Verify that no error was thrown for the second batch (reconnection successful)
++        assertFalse(errorThrown, "No error should be thrown for the second batch after reconnection");
++
++        // The route should have encountered the error, triggered breakOnFirstError,
++        // committed via the error handler, reconnected automatically, and continued processing new messages
++        // This verifies that the breakOnFirstError functionality works in batching mode with manual commit
++        // and that automatic reconnection occurs as expected
++    }
++}
+-- 
+2.48.1
+

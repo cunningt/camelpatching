@@ -1,6 +1,6 @@
-From 24fb88079fe42af88eaf97e1c11d1d318d2347be Mon Sep 17 00:00:00 2001
+From abc753d4e8afa92ee18e2f35b771dfc7775bca31 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Mon, 18 Aug 2025 16:04:59 -0400
+Date: Mon, 29 Sep 2025 12:31:08 -0400
 Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  productized
 
@@ -11,7 +11,7 @@ Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  3 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/components/camel-platform-http-main/pom.xml b/components/camel-platform-http-main/pom.xml
-index 0f687d4e82c4..406eceb6bfca 100644
+index 65b8f0002f92..aac5deb13fd3 100644
 --- a/components/camel-platform-http-main/pom.xml
 +++ b/components/camel-platform-http-main/pom.xml
 @@ -65,7 +65,7 @@
@@ -24,7 +24,7 @@ index 0f687d4e82c4..406eceb6bfca 100644
  
          <!-- test dependencies -->
 diff --git a/components/camel-platform-http-vertx/pom.xml b/components/camel-platform-http-vertx/pom.xml
-index fa18920a5aaa..04c2229cfe9e 100644
+index 2cbfcea73a3f..f3e6744dc6d6 100644
 --- a/components/camel-platform-http-vertx/pom.xml
 +++ b/components/camel-platform-http-vertx/pom.xml
 @@ -53,7 +53,7 @@
@@ -37,14 +37,14 @@ index fa18920a5aaa..04c2229cfe9e 100644
  
          <!-- test dependencies -->
 diff --git a/parent/pom.xml b/parent/pom.xml
-index 68406262d9b8..417fc23c99ad 100644
+index 2b7fc3dac952..fdd5b1b4a4c8 100644
 --- a/parent/pom.xml
 +++ b/parent/pom.xml
 @@ -512,6 +512,7 @@
          <velocity-tools-version>3.1</velocity-tools-version>
          <velocity-version>2.4.1</velocity-version>
-         <vertx-version>4.5.18</vertx-version>
-+        <vertx-community-version>4.5.18</vertx-community-version>
+         <vertx-version>4.5.20</vertx-version>
++        <vertx-community-version>4.5.20</vertx-community-version>
          <vysper-version>0.7</vysper-version>
          <weaviate-client-version>5.4.0</weaviate-client-version>
          <web3j-version>5.0.0</web3j-version>
