@@ -1,0 +1,33 @@
+From 39ac8a89447824e90838c91c851dd133081f1d88 Mon Sep 17 00:00:00 2001
+From: Marco Carletti <mar.carletti@gmail.com>
+Date: Tue, 16 Sep 2025 15:42:46 +0200
+Subject: [PATCH] archetype: restore undertow
+
+---
+ .../src/main/resources/archetype-resources/pom.xml     | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml
+index 7eb8f4d50ac..a8a624a3462 100644
+--- a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml
++++ b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/pom.xml
+@@ -58,6 +58,16 @@
+     <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-web</artifactId>
++      <exclusions>
++        <exclusion>
++          <groupId>org.springframework.boot</groupId>
++          <artifactId>spring-boot-starter-tomcat</artifactId>
++        </exclusion>
++      </exclusions>
++    </dependency>
++    <dependency>
++      <groupId>org.springframework.boot</groupId>
++      <artifactId>spring-boot-starter-undertow</artifactId>
+     </dependency>
+     <dependency>
+       <groupId>org.springframework.boot</groupId>
+-- 
+2.48.1
+

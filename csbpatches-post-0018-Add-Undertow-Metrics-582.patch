@@ -1,0 +1,1371 @@
+From 1bc2df7391d6a43783dfa6071c89db057e90c2cb Mon Sep 17 00:00:00 2001
+From: Federico Mariani <34543311+Croway@users.noreply.github.com>
+Date: Thu, 4 Sep 2025 16:00:14 +0200
+Subject: [PATCH] Add Undertow Metrics (#582)
+
+* Add Undertow Metrics
+
+* Add Undertow Metrics in Platform HTTP + Refactor Platform HTTP to use undertow
+---
+ .../camel-platform-http-starter/pom.xml       |  28 ++
+ .../metrics/undertow/UndertowComponents.java  |  25 ++
+ .../metrics/undertow/UndertowMetrics.java     | 346 ++++++++++++++++++
+ .../UndertowMetricsAutoConfiguration.java     |  47 +++
+ .../undertow/UndertowMetricsBinder.java       |  86 +++++
+ ...ot.autoconfigure.AutoConfiguration.imports |   2 +-
+ .../PlatformHttpAsyncRequestHandlingTest.java |   3 +-
+ .../springboot/PlatformHttpStreamingTest.java |   3 +-
+ ...ngBootPlatformHttpBridgedEndpointTest.java |   3 +-
+ ...BootPlatformHttpCamelIntegrationsTest.java |   3 +-
+ ...ringBootPlatformHttpCertificationTest.java |  33 +-
+ .../SpringBootPlatformHttpCookiesTest.java    |  12 +-
+ ...ngBootPlatformHttpCorsCredentialsTest.java |   3 +-
+ .../SpringBootPlatformHttpCorsTest.java       |   3 +-
+ .../SpringBootPlatformHttpEngineTest.java     |   3 +-
+ ...gBootPlatformHttpHandleWriteErrorTest.java |   3 +-
+ ...gBootPlatformHttpJacksonConverterTest.java |   3 +-
+ ...BootPlatformHttpMultipleExecutorsTest.java |   3 +-
+ ...tpMultipleExecutorsVirtualThreadsTest.java |   3 +-
+ .../SpringBootPlatformHttpOptionsTest.java    |   3 +-
+ .../SpringBootPlatformHttpProxyTest.java      |   3 +-
+ ...ingBootPlatformHttpRequestTimeoutTest.java |   3 +-
+ .../SpringBootPlatformHttpRestDSLTest.java    |   3 +-
+ .../SpringBootPlatformHttpTest.java           |   3 +-
+ ...ringBootPlatformHttpTypeConverterTest.java |   3 +-
+ ...gBootPlatformHttpUndertowActuatorTest.java | 161 ++++++++
+ .../SpringBootPlatformHttpValidationTest.java |   3 +-
+ ...ingBootPlatformHttpVirtualThreadsTest.java |   3 +-
+ .../springboot/UndertowWebServerFactory.java  |  17 +
+ ...ot.autoconfigure.AutoConfiguration.imports |  18 +
+ 30 files changed, 791 insertions(+), 41 deletions(-)
+ create mode 100644 components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowComponents.java
+ create mode 100644 components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetrics.java
+ create mode 100644 components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsAutoConfiguration.java
+ create mode 100644 components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsBinder.java
+ create mode 100644 components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpUndertowActuatorTest.java
+ create mode 100644 components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/UndertowWebServerFactory.java
+ create mode 100644 components-starter/camel-platform-http-starter/src/test/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+
+diff --git a/components-starter/camel-platform-http-starter/pom.xml b/components-starter/camel-platform-http-starter/pom.xml
+index 444774a7fb5..4cfd4abc584 100644
+--- a/components-starter/camel-platform-http-starter/pom.xml
++++ b/components-starter/camel-platform-http-starter/pom.xml
+@@ -48,6 +48,28 @@
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-web</artifactId>
+       <version>${spring-boot-version}</version>
++      <exclusions>
++        <exclusion>
++          <groupId>org.springframework.boot</groupId>
++          <artifactId>spring-boot-starter-tomcat</artifactId>
++        </exclusion>
++      </exclusions>
++    </dependency>
++    <dependency>
++      <groupId>org.springframework.boot</groupId>
++      <artifactId>spring-boot-starter-undertow</artifactId>
++      <version>${spring-boot-version}</version>
++    </dependency>
++    <dependency>
++      <groupId>org.springframework.boot</groupId>
++      <artifactId>spring-boot-actuator-autoconfigure</artifactId>
++      <version>${spring-boot-version}</version>
++      <optional>true</optional>
++    </dependency>
++    <dependency>
++      <groupId>io.micrometer</groupId>
++      <artifactId>micrometer-core</artifactId>
++      <optional>true</optional>
+     </dependency>
+     <dependency>
+       <groupId>org.springframework.boot</groupId>
+@@ -122,6 +144,12 @@
+       <artifactId>camel-jsonpath-starter</artifactId>
+       <scope>test</scope>
+     </dependency>
++    <dependency>
++      <groupId>org.springframework.boot</groupId>
++      <artifactId>spring-boot-starter-actuator</artifactId>
++      <version>${spring-boot-version}</version>
++      <scope>test</scope>
++    </dependency>
+     <!--START OF GENERATED CODE-->
+     <dependency>
+       <groupId>org.apache.camel.springboot</groupId>
+diff --git a/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowComponents.java b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowComponents.java
+new file mode 100644
+index 00000000000..8cec0df16bd
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowComponents.java
+@@ -0,0 +1,25 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.camel.component.platform.http.springboot.actuator.metrics.undertow;
++
++import io.undertow.Undertow;
++import io.undertow.server.session.SessionManager;
++import io.undertow.servlet.api.Deployment;
++import org.xnio.XnioWorker;
++
++public record UndertowComponents(XnioWorker xnioWorker, SessionManager sessionManager,
++                                 Deployment deployment, Undertow undertow) { }
+diff --git a/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetrics.java b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetrics.java
+new file mode 100644
+index 00000000000..89e63b64f55
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetrics.java
+@@ -0,0 +1,346 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.camel.component.platform.http.springboot.actuator.metrics.undertow;
++
++import io.micrometer.core.instrument.FunctionCounter;
++import io.micrometer.core.instrument.Gauge;
++import io.micrometer.core.instrument.MeterRegistry;
++import io.micrometer.core.instrument.Tag;
++import io.micrometer.core.instrument.Tags;
++import io.micrometer.core.instrument.binder.BaseUnits;
++import io.micrometer.core.instrument.binder.MeterBinder;
++import io.undertow.server.session.SessionManager;
++import io.undertow.servlet.api.Deployment;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.xnio.XnioWorker;
++
++import javax.management.MBeanServer;
++import javax.management.ObjectName;
++import java.lang.management.ManagementFactory;
++
++/**
++ * {@link MeterBinder} for Undertow.
++ * <p>
++ * This binder provides metrics for XNIO worker threads and session management.
++ *
++ */
++public class UndertowMetrics implements MeterBinder, AutoCloseable {
++    private static final Logger LOG = LoggerFactory.getLogger(UndertowMetrics.class);
++
++    private final XnioWorker xnioWorker;
++    private final SessionManager sessionManager;
++    private final Deployment deployment;
++    private final Iterable<Tag> tags;
++    private final MBeanServer mBeanServer;
++
++    public UndertowMetrics(XnioWorker xnioWorker,
++                           SessionManager sessionManager,
++                           Iterable<Tag> tags) {
++        this(xnioWorker, sessionManager, null, tags, ManagementFactory.getPlatformMBeanServer());
++    }
++
++    public UndertowMetrics(XnioWorker xnioWorker,
++                           SessionManager sessionManager,
++                           Deployment deployment,
++                           Iterable<Tag> tags) {
++        this(xnioWorker, sessionManager, deployment, tags, ManagementFactory.getPlatformMBeanServer());
++    }
++
++    public UndertowMetrics(XnioWorker xnioWorker,
++                           SessionManager sessionManager,
++                           Deployment deployment,
++                           Iterable<Tag> tags,
++                           MBeanServer mBeanServer) {
++        this.xnioWorker = xnioWorker;
++        this.sessionManager = sessionManager;
++        this.deployment = deployment;
++        this.tags = tags;
++        this.mBeanServer = mBeanServer;
++    }
++
++    public static void monitor(MeterRegistry registry,
++                               XnioWorker xnioWorker,
++                               SessionManager sessionManager,
++                               String... tags) {
++        monitor(registry, xnioWorker, sessionManager, Tags.of(tags));
++    }
++
++    public static void monitor(MeterRegistry registry,
++                               XnioWorker xnioWorker,
++                               SessionManager sessionManager,
++                               Iterable<Tag> tags) {
++        new UndertowMetrics(xnioWorker, sessionManager, tags).bindTo(registry);
++    }
++
++    public static void monitor(MeterRegistry registry,
++                               XnioWorker xnioWorker,
++                               SessionManager sessionManager,
++                               Deployment deployment,
++                               Iterable<Tag> tags) {
++        new UndertowMetrics(xnioWorker, sessionManager, deployment, tags).bindTo(registry);
++    }
++
++    @Override
++    public void bindTo(MeterRegistry registry) {
++        registerWorkerThreadMetrics(registry);
++        registerSessionMetrics(registry);
++        registerJmxMetrics(registry);
++    }
++
++    private void registerWorkerThreadMetrics(MeterRegistry registry) {
++        if (xnioWorker == null) {
++            return;
++        }
++
++        // Core worker pool size
++        Gauge.builder("undertow.threads.worker.core", xnioWorker, this::getCoreWorkerPoolSize)
++                .tags(tags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("Core worker thread pool size")
++                .register(registry);
++
++        // Maximum worker pool size
++        Gauge.builder("undertow.threads.worker.max", xnioWorker, this::getMaxWorkerPoolSize)
++                .tags(tags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("Maximum worker thread pool size")
++                .register(registry);
++
++        // Current worker thread count
++        Gauge.builder("undertow.threads.worker.current", xnioWorker, this::getCurrentWorkerThreadCount)
++                .tags(tags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("Current worker thread count")
++                .register(registry);
++
++        // Busy worker thread count
++        Gauge.builder("undertow.threads.worker.busy", xnioWorker, this::getBusyWorkerThreadCount)
++                .tags(tags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("Busy worker thread count")
++                .register(registry);
++
++        // Worker thread utilization percentage
++        Gauge.builder("undertow.threads.worker.utilization", xnioWorker, this::getWorkerThreadUtilization)
++                .tags(tags)
++                .baseUnit(BaseUnits.PERCENT)
++                .description("Worker thread utilization percentage")
++                .register(registry);
++
++        // Worker queue size
++        Gauge.builder("undertow.threads.worker.queue.size", xnioWorker, this::getWorkerQueueSize)
++                .tags(tags)
++                .description("Worker thread queue size")
++                .register(registry);
++
++        // IO thread count
++        Gauge.builder("undertow.threads.io", xnioWorker, XnioWorker::getIoThreadCount)
++                .tags(tags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("IO thread count")
++                .register(registry);
++    }
++
++    private void registerSessionMetrics(MeterRegistry registry) {
++        if (sessionManager == null) {
++            return;
++        }
++
++        // Active sessions
++        Gauge.builder("undertow.sessions.active.current", sessionManager, this::getActiveSessions)
++                .tags(tags)
++                .baseUnit(BaseUnits.SESSIONS)
++                .description("Current active sessions")
++                .register(registry);
++
++        // Maximum sessions (if available)
++        Gauge.builder("undertow.sessions.active.max", sessionManager, this::getMaxSessions)
++                .tags(tags)
++                .baseUnit(BaseUnits.SESSIONS)
++                .description("Maximum sessions allowed")
++                .register(registry);
++
++        // Session creation rate (if statistics are available)
++        FunctionCounter.builder("undertow.sessions.created", sessionManager, this::getCreatedSessions)
++                .tags(tags)
++                .baseUnit(BaseUnits.SESSIONS)
++                .description("Total sessions created")
++                .register(registry);
++
++        // Expired sessions
++        FunctionCounter.builder("undertow.sessions.expired", sessionManager, this::getExpiredSessions)
++                .tags(tags)
++                .baseUnit(BaseUnits.SESSIONS)
++                .description("Total sessions expired")
++                .register(registry);
++    }
++
++    private void registerJmxMetrics(MeterRegistry registry) {
++        // Register any available JMX-based metrics for Undertow
++        // This is a placeholder for when JMX beans are available
++        registerJmxMetricsIfAvailable(":type=thread-pool,name=*", registry);
++    }
++
++    private void registerJmxMetricsIfAvailable(String objectNamePattern, MeterRegistry registry) {
++        try {
++            ObjectName pattern = new ObjectName("jboss.threads" + objectNamePattern);
++            var objectNames = mBeanServer.queryNames(pattern, null);
++
++            for (ObjectName objectName : objectNames) {
++                // Register JMX-based thread pool metrics if available
++                registerJmxThreadPoolMetrics(objectName, registry);
++            }
++        } catch (Exception e) {
++            // JMX beans not available, skip
++        }
++    }
++
++    private void registerJmxThreadPoolMetrics(ObjectName objectName, MeterRegistry registry) {
++        Iterable<Tag> allTags = Tags.concat(tags, Tags.of("name", getNameFromObjectName(objectName)));
++
++        Gauge.builder("undertow.threads.jmx.active", mBeanServer,
++                        s -> safeDouble(() -> s.getAttribute(objectName, "ActiveCount")))
++                .tags(allTags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("Active threads from JMX")
++                .register(registry);
++
++        Gauge.builder("undertow.threads.jmx.pool.size", mBeanServer,
++                        s -> safeDouble(() -> s.getAttribute(objectName, "PoolSize")))
++                .tags(allTags)
++                .baseUnit(BaseUnits.THREADS)
++                .description("Thread pool size from JMX")
++                .register(registry);
++    }
++
++    private double getCoreWorkerPoolSize(XnioWorker worker) {
++        return safeDouble(() -> {
++            return this.xnioWorker.getMXBean().getCoreWorkerPoolSize();
++        });
++    }
++
++    private double getMaxWorkerPoolSize(XnioWorker worker) {
++        return safeDouble(() -> {
++            return this.xnioWorker.getMXBean().getMaxWorkerPoolSize();
++        });
++    }
++
++    private double getCurrentWorkerThreadCount(XnioWorker worker) {
++        return safeDouble(() -> {
++            // Try to get current thread count from the underlying executor
++            return worker.getMXBean().getWorkerPoolSize();
++        });
++    }
++
++    private double getBusyWorkerThreadCount(XnioWorker worker) {
++        return safeDouble(() -> {
++            // Try to access getBusyWorkerThreadCount if available
++            return worker.getMXBean().getBusyWorkerThreadCount();
++        });
++    }
++
++    private double getWorkerThreadUtilization(XnioWorker worker) {
++        double current = getCurrentWorkerThreadCount(worker);
++        double total = getCoreWorkerPoolSize(worker);
++        if (total > 0 && !Double.isNaN(current) && !Double.isNaN(total)) {
++            return (current / total) * 100.0;
++        }
++        return Double.NaN;
++    }
++
++    private double getWorkerQueueSize(XnioWorker worker) {
++        return safeDouble(() -> {
++            return worker.getMXBean().getWorkerQueueSize();
++        });
++    }
++
++    // Session metrics
++    private double getActiveSessions(SessionManager manager) {
++        return safeDouble(() -> {
++            if (manager.getStatistics() != null) {
++                return manager.getStatistics().getActiveSessionCount();
++            }
++            if (deployment != null && deployment.getSessionManager() != null) {
++                return deployment.getSessionManager().getActiveSessions().size();
++            }
++
++            throw new RuntimeException("Statistics not enabled, NaN");
++        });
++    }
++
++    private double getMaxSessions(SessionManager manager) {
++        return safeDouble(() -> {
++            if (manager.getStatistics() != null) {
++                return manager.getStatistics().getMaxActiveSessions();
++            }
++
++            throw new RuntimeException("Statistics not enabled, NaN");
++        });
++    }
++
++    private double getCreatedSessions(SessionManager manager) {
++        return safeDouble(() -> {
++            if (manager.getStatistics() != null) {
++                return manager.getStatistics().getCreatedSessionCount();
++            }
++
++            throw new RuntimeException("Statistics not enabled, NaN");
++        });
++    }
++
++    private double getExpiredSessions(SessionManager manager) {
++        return safeDouble(() -> {
++            if (manager.getStatistics() != null) {
++                return manager.getStatistics().getExpiredSessionCount();
++            }
++
++            throw new RuntimeException("Statistics not enabled, NaN");
++        });
++    }
++
++    // Utility methods
++    private double safeDouble(ThrowingSupplier<Object> supplier) {
++        try {
++            Object result = supplier.get();
++            if (result == null) {
++                return Double.NaN;
++            }
++            return Double.parseDouble(result.toString());
++        } catch (Exception e) {
++            LOG.trace(e.getMessage(), e);
++            return Double.NaN;
++        }
++    }
++
++    private String getNameFromObjectName(ObjectName objectName) {
++        String name = objectName.getKeyProperty("name");
++        return name != null ? name.replace("\"", "") : "unknown";
++    }
++
++    @FunctionalInterface
++    private interface ThrowingSupplier<T> {
++        T get() throws Exception;
++    }
++
++    @Override
++    public void close() {
++        // Cleanup any resources if needed
++        // Currently no resources to clean up, but this provides the interface
++        // for future enhancements
++    }
++}
+diff --git a/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsAutoConfiguration.java b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsAutoConfiguration.java
+new file mode 100644
+index 00000000000..4f2cb6fb307
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsAutoConfiguration.java
+@@ -0,0 +1,47 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.camel.component.platform.http.springboot.actuator.metrics.undertow;
++
++import io.micrometer.core.instrument.MeterRegistry;
++import io.micrometer.core.instrument.binder.MeterBinder;
++import io.undertow.Undertow;
++import org.springframework.boot.actuate.autoconfigure.metrics.CompositeMeterRegistryAutoConfiguration;
++import org.springframework.boot.autoconfigure.AutoConfiguration;
++import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
++import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
++import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
++import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
++import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
++import org.springframework.context.annotation.Bean;
++
++/**
++ * {@link EnableAutoConfiguration Auto-configuration} for {@link UndertowMetrics}.
++ *
++ */
++@AutoConfiguration(after = CompositeMeterRegistryAutoConfiguration.class)
++@ConditionalOnWebApplication
++@ConditionalOnClass({ Undertow.class, MeterBinder.class })
++public class UndertowMetricsAutoConfiguration {
++
++    @Bean
++    @ConditionalOnBean(MeterRegistry.class)
++    @ConditionalOnMissingBean({ UndertowMetrics.class, UndertowMetricsBinder.class })
++    public UndertowMetricsBinder undertowMetricsBinder(MeterRegistry meterRegistry) {
++        return new UndertowMetricsBinder(meterRegistry);
++    }
++
++}
+diff --git a/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsBinder.java b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsBinder.java
+new file mode 100644
+index 00000000000..ab02ec6bae3
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/main/java/org/apache/camel/component/platform/http/springboot/actuator/metrics/undertow/UndertowMetricsBinder.java
+@@ -0,0 +1,86 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.camel.component.platform.http.springboot.actuator.metrics.undertow;
++
++import io.micrometer.core.instrument.MeterRegistry;
++import io.micrometer.core.instrument.Tag;
++import io.undertow.Undertow;
++import io.undertow.servlet.api.DeploymentManager;
++import org.springframework.beans.factory.DisposableBean;
++import org.springframework.boot.context.event.ApplicationStartedEvent;
++import org.springframework.boot.web.context.WebServerApplicationContext;
++import org.springframework.boot.web.embedded.undertow.UndertowServletWebServer;
++import org.springframework.boot.web.server.WebServer;
++import org.springframework.context.ApplicationContext;
++import org.springframework.context.ApplicationListener;
++import org.xnio.XnioWorker;
++
++import java.util.Collections;
++
++public class UndertowMetricsBinder implements ApplicationListener<ApplicationStartedEvent>, DisposableBean {
++
++    private final MeterRegistry meterRegistry;
++    private final Iterable<Tag> tags;
++    private volatile UndertowMetrics undertowMetrics;
++
++    public UndertowMetricsBinder(MeterRegistry meterRegistry) {
++        this(meterRegistry, Collections.emptyList());
++    }
++
++    public UndertowMetricsBinder(MeterRegistry meterRegistry, Iterable<Tag> tags) {
++        this.meterRegistry = meterRegistry;
++        this.tags = tags;
++    }
++
++    @Override
++    public void destroy() {
++        if (this.undertowMetrics != null) {
++            this.undertowMetrics.close();
++        }
++    }
++
++    @Override
++    public void onApplicationEvent(ApplicationStartedEvent event) {
++        ApplicationContext applicationContext = event.getApplicationContext();
++        UndertowComponents undertowComponents = findUndertowComponents(applicationContext);
++        if (undertowComponents != null) {
++            this.undertowMetrics = new UndertowMetrics(undertowComponents.xnioWorker(), undertowComponents.sessionManager(),
++                    undertowComponents.deployment(), tags);
++            this.undertowMetrics.bindTo(this.meterRegistry);
++        }
++    }
++
++    private UndertowComponents findUndertowComponents(ApplicationContext applicationContext) {
++        if (applicationContext instanceof WebServerApplicationContext webServerApplicationContext) {
++            WebServer webServer = webServerApplicationContext.getWebServer();
++            if (webServer instanceof UndertowServletWebServer undertowServletWebServer) {
++                Undertow undertow = undertowServletWebServer.getUndertow();
++                XnioWorker xnioWorker = undertowServletWebServer.getUndertow().getWorker();
++                DeploymentManager deploymentManager = undertowServletWebServer.getDeploymentManager();
++
++                return new UndertowComponents(
++                        xnioWorker,
++                        deploymentManager.getDeployment().getSessionManager(),
++                        deploymentManager.getDeployment(),
++                        undertow
++                );
++            }
++        }
++        return null;
++    }
++
++}
+diff --git a/components-starter/camel-platform-http-starter/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports b/components-starter/camel-platform-http-starter/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+index 84a0a5df88d..46409a78ebc 100644
+--- a/components-starter/camel-platform-http-starter/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
++++ b/components-starter/camel-platform-http-starter/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+@@ -19,4 +19,4 @@ org.apache.camel.component.platform.http.springboot.PlatformHttpComponentConvert
+ org.apache.camel.component.platform.http.springboot.PlatformHttpComponentAutoConfiguration
+ org.apache.camel.component.platform.http.springboot.SpringBootPlatformHttpAutoConfiguration
+ org.apache.camel.component.platform.http.springboot.SpringBootPlatformWebMvcConfiguration
+-org.apache.camel.component.platform.http.springboot.actuate.metrics.undertow.UndertowMetricsAutoConfiguration
+\ No newline at end of file
++org.apache.camel.component.platform.http.springboot.actuator.metrics.undertow.UndertowMetricsAutoConfiguration
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpAsyncRequestHandlingTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpAsyncRequestHandlingTest.java
+index 4d265162fc9..704e23d6721 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpAsyncRequestHandlingTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpAsyncRequestHandlingTest.java
+@@ -22,6 +22,7 @@ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -36,7 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpRestDSLTest.class, PlatformHttpAsyncRequestHandlingTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpStreamingTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpStreamingTest.java
+index b6766bad765..c57e044d4bc 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpStreamingTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/PlatformHttpStreamingTest.java
+@@ -24,6 +24,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.apache.camel.util.IOHelper;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -45,7 +46,7 @@ import static org.hamcrest.Matchers.emptyOrNullString;
+ import static org.hamcrest.Matchers.is;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpTest.class, PlatformHttpStreamingTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpBridgedEndpointTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpBridgedEndpointTest.java
+index 003f44a548d..de1d96813f2 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpBridgedEndpointTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpBridgedEndpointTest.java
+@@ -25,6 +25,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Value;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -39,7 +40,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
+ import static io.restassured.RestAssured.given;
+ import static org.hamcrest.Matchers.containsString;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpBridgedEndpointTest.class, SpringBootPlatformHttpBridgedEndpointTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCamelIntegrationsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCamelIntegrationsTest.java
+index 0cf28e0c0e6..ea01fff5dd2 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCamelIntegrationsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCamelIntegrationsTest.java
+@@ -25,6 +25,7 @@ import org.hamcrest.Matchers;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -36,7 +37,7 @@ import org.springframework.context.annotation.Configuration;
+ 
+ import static io.restassured.RestAssured.given;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpCamelIntegrationsTest.class, SpringBootPlatformHttpCamelIntegrationsTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCertificationTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCertificationTest.java
+index 28fa0bfa46e..4053b73bf4d 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCertificationTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCertificationTest.java
+@@ -16,21 +16,6 @@
+  */
+ package org.apache.camel.component.platform.http.springboot;
+ 
+-import java.io.BufferedOutputStream;
+-import java.io.FileInputStream;
+-import java.io.FileOutputStream;
+-import java.io.IOException;
+-import java.io.InputStream;
+-import java.nio.charset.StandardCharsets;
+-import java.nio.file.Files;
+-import java.nio.file.Path;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Random;
+-import java.util.concurrent.CompletableFuture;
+-import java.util.concurrent.ExecutorService;
+-import java.util.concurrent.Executors;
+-
+ import io.restassured.RestAssured;
+ import io.restassured.http.ContentType;
+ import org.apache.camel.CamelContext;
+@@ -50,6 +35,7 @@ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.condition.DisabledIfSystemProperties;
+ import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -58,13 +44,28 @@ import org.springframework.boot.test.web.server.LocalServerPort;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ 
++import java.io.BufferedOutputStream;
++import java.io.FileInputStream;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Random;
++import java.util.concurrent.CompletableFuture;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++
+ import static io.restassured.RestAssured.given;
+ import static io.restassured.matcher.RestAssuredMatchers.detailedCookie;
+ import static org.hamcrest.Matchers.equalTo;
+ import static org.hamcrest.Matchers.is;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpCertificationTest.class, SpringBootPlatformHttpCertificationTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCookiesTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCookiesTest.java
+index 0708967e6e7..fa7ece199a0 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCookiesTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCookiesTest.java
+@@ -27,8 +27,10 @@ import org.apache.camel.component.platform.http.cookie.CookieHandler;
+ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Disabled;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -37,6 +39,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
+ import org.springframework.boot.test.web.server.LocalServerPort;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.test.annotation.DirtiesContext;
+ 
+ import static io.restassured.RestAssured.given;
+ import static io.restassured.matcher.RestAssuredMatchers.detailedCookie;
+@@ -44,7 +47,7 @@ import static org.hamcrest.Matchers.equalTo;
+ import static org.hamcrest.Matchers.startsWith;
+ import static org.junit.jupiter.api.Assertions.assertEquals;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpCookiesTest.class, SpringBootPlatformHttpCookiesTest.TestConfiguration.class,
+@@ -123,8 +126,7 @@ public class SpringBootPlatformHttpCookiesTest {
+                         detailedCookie()
+                                 .value("bar")
+                                 .path(CookieConfiguration.DEFAULT_PATH)
+-                                .domain((String) null)
+-                                .sameSite(CookieConfiguration.DEFAULT_SAME_SITE.getValue()))
++                                .domain((String) null))
+                 .body(equalTo("add"));
+     }
+ 
+@@ -156,13 +158,13 @@ public class SpringBootPlatformHttpCookiesTest {
+ 
+     @Test
+     public void replaceCookie() {
+-        given()
++        var v = given()
+                 .header("cookie", "XSRF-TOKEN=c359b44aef83415")
+                 .when()
+                 .get("/replace")
+                 .then()
+                 .statusCode(200)
+-                .header("set-cookie", "XSRF-TOKEN=88533580000c314; Path=/")
++                .header("Set-Cookie", "XSRF-TOKEN=88533580000c314; path=/")
+                 .body(equalTo("replace"));
+     }
+ 
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsCredentialsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsCredentialsTest.java
+index 7ec0a7383ac..e8309cfcd40 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsCredentialsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsCredentialsTest.java
+@@ -23,6 +23,7 @@ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -34,7 +35,7 @@ import org.springframework.context.annotation.Configuration;
+ import static io.restassured.RestAssured.given;
+ import static org.hamcrest.Matchers.*;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpCorsCredentialsTest.class, SpringBootPlatformHttpCorsCredentialsTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsTest.java
+index 8cc096efd5b..859cac20497 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpCorsTest.java
+@@ -23,6 +23,7 @@ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -36,7 +37,7 @@ import static org.hamcrest.Matchers.containsString;
+ import static org.hamcrest.Matchers.emptyString;
+ import static org.hamcrest.Matchers.not;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpCorsTest.class, SpringBootPlatformHttpCorsTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpEngineTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpEngineTest.java
+index c90ae75d25c..1799b72318e 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpEngineTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpEngineTest.java
+@@ -29,6 +29,7 @@ import org.apache.commons.io.IOUtils;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -53,7 +54,7 @@ import static org.hamcrest.Matchers.emptyOrNullString;
+ import static org.hamcrest.Matchers.equalTo;
+ import static org.hamcrest.Matchers.is;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpEngineTest.class, SpringBootPlatformHttpEngineTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpHandleWriteErrorTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpHandleWriteErrorTest.java
+index b318ea59347..d95a7cbedb3 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpHandleWriteErrorTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpHandleWriteErrorTest.java
+@@ -29,6 +29,7 @@ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.assertj.core.api.Assertions;
+ import org.junit.jupiter.api.Test;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -39,7 +40,7 @@ import org.springframework.core.env.Environment;
+ 
+ import java.io.IOException;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpHandleWriteErrorTest.class, SpringBootPlatformHttpHandleWriteErrorTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpJacksonConverterTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpJacksonConverterTest.java
+index bf369ad8f44..a2b47cc984c 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpJacksonConverterTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpJacksonConverterTest.java
+@@ -25,6 +25,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -37,7 +38,7 @@ import org.springframework.context.annotation.Configuration;
+ import static io.restassured.RestAssured.given;
+ import static org.hamcrest.Matchers.equalTo;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpJacksonConverterTest.class, SpringBootPlatformHttpJacksonConverterTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsTest.java
+index 3d4ce2f7ec1..54c75d11e08 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsTest.java
+@@ -22,6 +22,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.assertj.core.api.Assertions;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -34,7 +35,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+ import java.util.List;
+ import java.util.concurrent.Executor;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpMultipleExecutorsTest.class, SpringBootPlatformHttpMultipleExecutorsTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsVirtualThreadsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsVirtualThreadsTest.java
+index 9bcc715bfea..46af99d26b2 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsVirtualThreadsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpMultipleExecutorsVirtualThreadsTest.java
+@@ -22,6 +22,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.assertj.core.api.Assertions;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -35,7 +36,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
+ import java.util.List;
+ import java.util.concurrent.Executor;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpMultipleExecutorsVirtualThreadsTest.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpOptionsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpOptionsTest.java
+index 086b158a904..49d9f1ddb67 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpOptionsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpOptionsTest.java
+@@ -22,6 +22,7 @@ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -33,7 +34,7 @@ import org.springframework.context.annotation.Configuration;
+ import static io.restassured.RestAssured.given;
+ import static org.hamcrest.Matchers.*;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpOptionsTest.class, SpringBootPlatformHttpOptionsTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpProxyTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpProxyTest.java
+index 056c3fe37f2..5d8242bce8d 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpProxyTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpProxyTest.java
+@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.beans.factory.annotation.Value;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -43,7 +44,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
+ import static io.restassured.RestAssured.given;
+ import static org.hamcrest.Matchers.containsString;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpProxyTest.class, SpringBootPlatformHttpProxyTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRequestTimeoutTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRequestTimeoutTest.java
+index 195144a4c20..b872f04e446 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRequestTimeoutTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRequestTimeoutTest.java
+@@ -22,6 +22,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.assertj.core.api.Assertions;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -32,7 +33,7 @@ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ import org.springframework.http.HttpStatusCode;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpRequestTimeoutTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRestDSLTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRestDSLTest.java
+index 97dc2e88e02..b3215ad3cc0 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRestDSLTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpRestDSLTest.java
+@@ -19,6 +19,7 @@ package org.apache.camel.component.platform.http.springboot;
+ import org.apache.camel.builder.RouteBuilder;
+ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -26,7 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpRestDSLTest.class, SpringBootPlatformHttpRestDSLTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTest.java
+index b69cf6ddf0e..4b6b927899b 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTest.java
+@@ -19,6 +19,7 @@ package org.apache.camel.component.platform.http.springboot;
+ import org.apache.camel.builder.RouteBuilder;
+ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -26,7 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpTest.class, SpringBootPlatformHttpTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTypeConverterTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTypeConverterTest.java
+index 66cf1def32a..214b411073c 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTypeConverterTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpTypeConverterTest.java
+@@ -24,6 +24,7 @@ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -42,7 +43,7 @@ import java.util.Map;
+ import static io.restassured.RestAssured.given;
+ import static org.hamcrest.Matchers.equalTo;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpTypeConverterTest.class, SpringBootPlatformHttpTypeConverterTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpUndertowActuatorTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpUndertowActuatorTest.java
+new file mode 100644
+index 00000000000..bc4d605a098
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpUndertowActuatorTest.java
+@@ -0,0 +1,161 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one or more
++ * contributor license agreements.  See the NOTICE file distributed with
++ * this work for additional information regarding copyright ownership.
++ * The ASF licenses this file to You under the Apache License, Version 2.0
++ * (the "License"); you may not use this file except in compliance with
++ * the License.  You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.camel.component.platform.http.springboot;
++
++import org.apache.camel.builder.RouteBuilder;
++import org.apache.camel.spring.boot.CamelAutoConfiguration;
++import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
++import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
++import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
++import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.boot.test.web.client.TestRestTemplate;
++import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
++import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++@EnableAutoConfiguration(exclude = {
++        ManagementWebSecurityAutoConfiguration.class,
++        OAuth2ClientAutoConfiguration.class,
++        SecurityAutoConfiguration.class
++    }
++)
++@CamelSpringBootTest
++@SpringBootTest(
++    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
++    classes = {
++        CamelAutoConfiguration.class,
++        SpringBootPlatformHttpUndertowActuatorTest.class,
++        SpringBootPlatformHttpUndertowActuatorTest.TestConfiguration.class,
++        PlatformHttpComponentAutoConfiguration.class,
++        SpringBootPlatformHttpAutoConfiguration.class
++    },
++    properties = {
++        "management.endpoints.web.exposure.include=*",
++        "management.endpoint.metrics.access=unrestricted",
++        "server.undertow.threads.worker.core=4",
++        "server.undertow.threads.worker.max=8",
++        "server.undertow.options.server.ENABLE_STATISTICS=true"
++    }
++)
++public class SpringBootPlatformHttpUndertowActuatorTest {
++
++    @Autowired
++    private TestRestTemplate restTemplate;
++
++    @Configuration
++    public static class TestConfiguration {
++
++        @Bean
++        public RouteBuilder testRouteBuilder() {
++            return new RouteBuilder() {
++                @Override
++                public void configure() {
++                    from("platform-http:/test").setBody().constant("test response");
++                }
++            };
++        }
++    }
++
++    @Test
++    public void testUndertowWorkerThreadMetricsAvailable() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("undertow.threads.worker");
++    }
++
++    @Test
++    public void testUndertowWorkerCoreThreadsMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.core", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.worker.core\"");
++        assertThat(response.getBody()).contains("\"baseUnit\":\"threads\"");
++    }
++
++    @Test
++    public void testUndertowWorkerMaxThreadsMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.max", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.worker.max\"");
++        assertThat(response.getBody()).contains("\"baseUnit\":\"threads\"");
++    }
++
++    @Test
++    public void testUndertowWorkerCurrentThreadsMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.current", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.worker.current\"");
++        assertThat(response.getBody()).contains("\"baseUnit\":\"threads\"");
++    }
++
++    @Test
++    public void testUndertowWorkerBusyThreadsMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.busy", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.worker.busy\"");
++        assertThat(response.getBody()).contains("\"baseUnit\":\"threads\"");
++    }
++
++    @Test
++    public void testUndertowWorkerUtilizationMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.utilization", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.worker.utilization\"");
++        assertThat(response.getBody()).contains("\"baseUnit\":\"percent\"");
++    }
++
++    @Test
++    public void testUndertowWorkerQueueSizeMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.queue.size", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.worker.queue.size\"");
++    }
++
++    @Test
++    public void testUndertowIOThreadsMetric() {
++        ResponseEntity<String> response = restTemplate.getForEntity("/actuator/metrics/undertow.threads.io", String.class);
++        
++        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(response.getBody()).contains("\"name\":\"undertow.threads.io\"");
++        assertThat(response.getBody()).contains("\"baseUnit\":\"threads\"");
++    }
++
++    @Test
++    public void testActuatorEndpointAfterHttpRequest() {
++        restTemplate.getForEntity("/test", String.class);
++
++        ResponseEntity<String> metricsResponse = restTemplate.getForEntity("/actuator/metrics/undertow.threads.worker.busy", String.class);
++        
++        assertThat(metricsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
++        assertThat(metricsResponse.getBody()).contains("\"name\":\"undertow.threads.worker.busy\"");
++    }
++}
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpValidationTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpValidationTest.java
+index 9418e9a376b..e2ca2538bc3 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpValidationTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpValidationTest.java
+@@ -30,6 +30,7 @@ import org.hamcrest.Matcher;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -46,7 +47,7 @@ import static org.hamcrest.Matchers.emptyString;
+ import static org.hamcrest.Matchers.equalTo;
+ import static org.hamcrest.Matchers.is;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpValidationTest.class, SpringBootPlatformHttpValidationTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpVirtualThreadsTest.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpVirtualThreadsTest.java
+index 30ca2fc20f0..3da413b7dfc 100644
+--- a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpVirtualThreadsTest.java
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/SpringBootPlatformHttpVirtualThreadsTest.java
+@@ -19,6 +19,7 @@ package org.apache.camel.component.platform.http.springboot;
+ import org.apache.camel.builder.RouteBuilder;
+ import org.apache.camel.spring.boot.CamelAutoConfiguration;
+ import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
++import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientAutoConfiguration;
+ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+@@ -26,7 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
+ import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
+ 
+-@EnableAutoConfiguration(exclude = {OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
++@EnableAutoConfiguration(exclude = {ManagementWebSecurityAutoConfiguration.class, OAuth2ClientAutoConfiguration.class, SecurityAutoConfiguration.class})
+ @CamelSpringBootTest
+ @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = { CamelAutoConfiguration.class,
+         SpringBootPlatformHttpVirtualThreadsTest.class, SpringBootPlatformHttpVirtualThreadsTest.TestConfiguration.class,
+diff --git a/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/UndertowWebServerFactory.java b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/UndertowWebServerFactory.java
+new file mode 100644
+index 00000000000..ace1c45c306
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/test/java/org/apache/camel/component/platform/http/springboot/UndertowWebServerFactory.java
+@@ -0,0 +1,17 @@
++package org.apache.camel.component.platform.http.springboot;
++
++import org.springframework.boot.autoconfigure.AutoConfiguration;
++import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration;
++import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
++import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
++import org.springframework.context.annotation.Bean;
++
++@AutoConfiguration(before = ServletWebServerFactoryAutoConfiguration.class)
++public class UndertowWebServerFactory {
++
++    @Bean
++    public ServletWebServerFactory undertowWebServerFactory() {
++        return new UndertowServletWebServerFactory();
++    }
++
++}
+diff --git a/components-starter/camel-platform-http-starter/src/test/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports b/components-starter/camel-platform-http-starter/src/test/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+new file mode 100644
+index 00000000000..4b3bd1ca513
+--- /dev/null
++++ b/components-starter/camel-platform-http-starter/src/test/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+@@ -0,0 +1,18 @@
++## ---------------------------------------------------------------------------
++## Licensed to the Apache Software Foundation (ASF) under one or more
++## contributor license agreements.  See the NOTICE file distributed with
++## this work for additional information regarding copyright ownership.
++## The ASF licenses this file to You under the Apache License, Version 2.0
++## (the "License"); you may not use this file except in compliance with
++## the License.  You may obtain a copy of the License at
++##
++##      http://www.apache.org/licenses/LICENSE-2.0
++##
++## Unless required by applicable law or agreed to in writing, software
++## distributed under the License is distributed on an "AS IS" BASIS,
++## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++## See the License for the specific language governing permissions and
++## limitations under the License.
++## ---------------------------------------------------------------------------
++
++org.apache.camel.component.platform.http.springboot.UndertowWebServerFactory
+-- 
+2.48.1
+
