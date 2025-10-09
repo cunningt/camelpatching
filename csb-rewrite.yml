@@ -104,6 +104,10 @@ recipeList:
       artifactId: reactor-netty-http
       version: ${reactor-netty-version}
   - org.openrewrite.maven.AddManagedDependency:
+      groupId: org.eclipse.parsson
+      artifactId: parsson
+      version: ${parsson-version}
+  - org.openrewrite.maven.AddManagedDependency:
       groupId: org.json
       artifactId: json
       version: ${org-json-json-version}
