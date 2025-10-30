@@ -1,0 +1,76 @@
+From 90074266d289b8e6957188f41b7d7babb0455d96 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 28 Oct 2025 13:28:28 -0400
+Subject: [PATCH] Remove dependabot.yml and add a CODEOWNERS file to notify
+ @jboss-fuse/camel-reviewers of prod branch PRs
+
+---
+ .github/CODEOWNERS     |  1 +
+ .github/dependabot.yml | 47 ------------------------------------------
+ 2 files changed, 1 insertion(+), 47 deletions(-)
+ create mode 100644 .github/CODEOWNERS
+ delete mode 100644 .github/dependabot.yml
+
+diff --git a/.github/CODEOWNERS b/.github/CODEOWNERS
+new file mode 100644
+index 000000000000..3de0a842b3f9
+--- /dev/null
++++ b/.github/CODEOWNERS
+@@ -0,0 +1 @@
++* @jboss-fuse/camel-reviewers
+diff --git a/.github/dependabot.yml b/.github/dependabot.yml
+deleted file mode 100644
+index bb2917ecf789..000000000000
+--- a/.github/dependabot.yml
++++ /dev/null
+@@ -1,47 +0,0 @@
+-#
+-# Licensed to the Apache Software Foundation (ASF) under one or more
+-# contributor license agreements.  See the NOTICE file distributed with
+-# this work for additional information regarding copyright ownership.
+-# The ASF licenses this file to You under the Apache License, Version 2.0
+-# (the "License"); you may not use this file except in compliance with
+-# the License.  You may obtain a copy of the License at
+-#
+-#      http://www.apache.org/licenses/LICENSE-2.0
+-#
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
+-#
+-
+-version: 2
+-
+-updates:
+-  - package-ecosystem: "github-actions"
+-    directory: "/"
+-    schedule:
+-      interval: "daily"
+-  - package-ecosystem: "maven"
+-    directory: "/"
+-    schedule:
+-      interval: "daily"
+-    ignore:
+-      # amazon-kinesis-client 3.x requires protobuf 4.x
+-      # Quarkus forces protobuf to 3.25.5, therefore amazon-kinesis-client has to stay on 2.6.0
+-      - dependency-name: "software.amazon.kinesis:amazon-kinesis-client"
+-      # Quarkus related
+-      - dependency-name: "io.vertx:*"
+-      - dependency-name: "io.smallrye:jandex:*"
+-      # Spring Boot Dependencies related
+-      - dependency-name: "org.apache.logging.log4j:*"
+-    groups:
+-      Micrometer:
+-        patterns: ["micrometer*"]
+-      Opentelemetry:
+-        patterns: ["opentelemetry*"]
+-    open-pull-requests-limit: 20
+-  - package-ecosystem: "npm"
+-    directory: "docs"
+-    schedule:
+-       interval: "weekly"
+-- 
+2.48.1
+
