@@ -4,12 +4,12 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.8/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.14.1";
+$vers = "4.14.2";
 $dir = "camel-${vers}-branch";
 $patchdir = "camelpatches";
 
 $upstreambranch = "camel-$vers";
-$currentprodbranch = "camel-4.14.0-branch";
+$currentprodbranch = "camel-4.14.1-branch";
 $prodlocation = "prodlocation";
 
 # Clean up directories

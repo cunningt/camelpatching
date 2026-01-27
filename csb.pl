@@ -4,12 +4,12 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.8/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.14.1";
+$vers = "4.14.2";
 $dir = "camel-spring-boot-${vers}-branch";
 $patchdir = "csbpatches";
 
 $upstreambranch = "camel-spring-boot-$vers";
-$currentprodbranch = "camel-spring-boot-4.14.0-branch";
+$currentprodbranch = "camel-spring-boot-4.14.1-branch";
 $prodlocation = "csbprodlocation";
 
 # Clean up directories
@@ -105,15 +105,15 @@ close(FILEH);
 sleep(3);
 
 # Apply tooling changes
+system ("cp -r ../$prodlocation/tooling/pom.xml ./tooling");
 system ("cp -r ../$prodlocation/tooling/redhat-camel-spring-boot-bom-generator ./tooling");
-system ("cp -r ../$prodlocation/tooling/redhat-camel-spring-boot-bom ./tooling");
 system ("cp -r ../$prodlocation/tooling/redhat-patch-maven-plugin ./tooling");
 
-sleep(3);
+sleep(15);
 
 system ("git add tooling");
 
-sleep(3);
+sleep(15);
 
 system("git commit -a -m \"Compile with results of prod-maven-plugin\"");
 
