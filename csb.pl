@@ -4,12 +4,12 @@ $ENV{JAVA_HOME} = "/opt/homebrew/Cellar/openjdk@21/21.0.8/libexec/openjdk.jdk/Co
 
 my $endpoint = defined($ARGV[0]) ? shift(@ARGV) : "";
 
-$vers = "4.14.2";
+$vers = "4.14.4";
 $dir = "camel-spring-boot-${vers}-branch";
 $patchdir = "csbpatches";
 
 $upstreambranch = "camel-spring-boot-$vers";
-$currentprodbranch = "camel-spring-boot-4.14.1-branch";
+$currentprodbranch = "camel-spring-boot-4.14.2-branch";
 $prodlocation = "csbprodlocation";
 
 # Clean up directories
