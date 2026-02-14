@@ -1,29 +1,29 @@
-From 90074266d289b8e6957188f41b7d7babb0455d96 Mon Sep 17 00:00:00 2001
+From 9849df4843bb2a655d6ad283d9a9f16a36032602 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Tue, 28 Oct 2025 13:28:28 -0400
+Date: Fri, 13 Feb 2026 10:55:10 -0500
 Subject: [PATCH] Remove dependabot.yml and add a CODEOWNERS file to notify
  @jboss-fuse/camel-reviewers of prod branch PRs
 
 ---
  .github/CODEOWNERS     |  1 +
- .github/dependabot.yml | 47 ------------------------------------------
- 2 files changed, 1 insertion(+), 47 deletions(-)
+ .github/dependabot.yml | 46 ------------------------------------------
+ 2 files changed, 1 insertion(+), 46 deletions(-)
  create mode 100644 .github/CODEOWNERS
  delete mode 100644 .github/dependabot.yml
 
 diff --git a/.github/CODEOWNERS b/.github/CODEOWNERS
 new file mode 100644
-index 000000000000..3de0a842b3f9
+index 000000000000..902e6ba94725
 --- /dev/null
 +++ b/.github/CODEOWNERS
 @@ -0,0 +1 @@
-+* @jboss-fuse/camel-reviewers
++@jboss-fuse/camel-reviewers
 diff --git a/.github/dependabot.yml b/.github/dependabot.yml
 deleted file mode 100644
-index bb2917ecf789..000000000000
+index 93a5532f7ade..000000000000
 --- a/.github/dependabot.yml
 +++ /dev/null
-@@ -1,47 +0,0 @@
+@@ -1,46 +0,0 @@
 -#
 -# Licensed to the Apache Software Foundation (ASF) under one or more
 -# contributor license agreements.  See the NOTICE file distributed with
@@ -53,9 +53,6 @@ index bb2917ecf789..000000000000
 -    schedule:
 -      interval: "daily"
 -    ignore:
--      # amazon-kinesis-client 3.x requires protobuf 4.x
--      # Quarkus forces protobuf to 3.25.5, therefore amazon-kinesis-client has to stay on 2.6.0
--      - dependency-name: "software.amazon.kinesis:amazon-kinesis-client"
 -      # Quarkus related
 -      - dependency-name: "io.vertx:*"
 -      - dependency-name: "io.smallrye:jandex:*"
@@ -66,6 +63,8 @@ index bb2917ecf789..000000000000
 -        patterns: ["micrometer*"]
 -      Opentelemetry:
 -        patterns: ["opentelemetry*"]
+-      LangChain4j:
+-        patterns: ["dev.langchain4j:*"]
 -    open-pull-requests-limit: 20
 -  - package-ecosystem: "npm"
 -    directory: "docs"

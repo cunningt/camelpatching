@@ -1,7 +1,7 @@
-From 6c8acb3d561a1c056fc0de8dfff1ce8d63dc212b Mon Sep 17 00:00:00 2001
-From: Salvatore Mongiardo <smongiar@redhat.com>
-Date: Wed, 17 Sep 2025 16:27:33 +0200
-Subject: [PATCH] Dockerfile generation with JBang spring-boot export
+From 17209fd157f2d4fa49044240f70d3fcd410a2295 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Fri, 13 Feb 2026 19:20:33 -0500
+Subject: [PATCH] [PATCH] Dockerfile generation with JBang spring-boot export
 
 ---
  .../core/commands/ExportBaseCommand.java      |  2 +
@@ -10,27 +10,27 @@ Subject: [PATCH] Dockerfile generation with JBang spring-boot export
  3 files changed, 51 insertions(+), 6 deletions(-)
 
 diff --git a/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportBaseCommand.java b/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportBaseCommand.java
-index 34cebfef5908..7a773cf5034a 100644
+index cadd13b095a6..34e507f9473d 100644
 --- a/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportBaseCommand.java
 +++ b/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportBaseCommand.java
-@@ -46,6 +46,7 @@ import java.util.regex.Matcher;
- import java.util.regex.Pattern;
+@@ -47,6 +47,7 @@ import java.util.regex.Pattern;
  import java.util.stream.Collectors;
+ import java.util.stream.Stream;
  
 +import org.apache.camel.catalog.CamelCatalog;
  import org.apache.camel.catalog.DefaultCamelCatalog;
  import org.apache.camel.dsl.jbang.core.commands.catalog.KameletCatalogHelper;
  import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
-@@ -96,6 +97,7 @@ public abstract class ExportBaseCommand extends CamelCommand {
+@@ -99,6 +100,7 @@ public abstract class ExportBaseCommand extends CamelCommand {
      protected Path exportBaseDir;
      private MavenDownloader downloader;
      private Printer quietPrinter;
-+	protected CamelCatalog catalog;
++    protected CamelCatalog catalog;
  
      @CommandLine.Parameters(description = "The Camel file(s) to export. If no files is specified then what was last run will be exported.",
                              arity = "0..9", paramLabel = "<files>", parameterConsumer = FilesConsumer.class)
 diff --git a/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportQuarkus.java b/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportQuarkus.java
-index c07bda0340f4..ae07acc4ab98 100644
+index 029ae2d7d4fd..7ccb4e7fc14c 100644
 --- a/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportQuarkus.java
 +++ b/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportQuarkus.java
 @@ -30,7 +30,6 @@ import java.util.Set;
@@ -41,7 +41,7 @@ index c07bda0340f4..ae07acc4ab98 100644
  import org.apache.camel.dsl.jbang.core.common.CatalogLoader;
  import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
  import org.apache.camel.dsl.jbang.core.common.PathUtils;
-@@ -275,7 +274,7 @@ class ExportQuarkus extends Export {
+@@ -281,7 +280,7 @@ class ExportQuarkus extends Export {
          // quarkus controls the camel version
          String repos = getMavenRepositories(settings, prop, quarkusVersion);
  
@@ -50,7 +50,7 @@ index c07bda0340f4..ae07acc4ab98 100644
          if (camelVersion == null) {
              camelVersion = catalog.getCatalogVersion();
          }
-@@ -433,7 +432,7 @@ class ExportQuarkus extends Export {
+@@ -442,7 +441,7 @@ class ExportQuarkus extends Export {
          // quarkus controls the camel version
          String repos = getMavenRepositories(settings, prop, quarkusVersion);
  
@@ -60,7 +60,7 @@ index c07bda0340f4..ae07acc4ab98 100644
              camelVersion = catalog.getCatalogVersion();
          }
 diff --git a/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportSpringBoot.java b/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportSpringBoot.java
-index 22c3ef787879..d3f8b3f6a415 100644
+index 03e008560fbe..6b63bb2e7aeb 100644
 --- a/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportSpringBoot.java
 +++ b/dsl/camel-jbang/camel-jbang-core/src/main/java/org/apache/camel/dsl/jbang/core/commands/ExportSpringBoot.java
 @@ -30,7 +30,6 @@ import java.util.Objects;
@@ -71,7 +71,7 @@ index 22c3ef787879..d3f8b3f6a415 100644
  import org.apache.camel.dsl.jbang.core.common.CatalogLoader;
  import org.apache.camel.dsl.jbang.core.common.CommandLineHelper;
  import org.apache.camel.dsl.jbang.core.common.PathUtils;
-@@ -184,7 +183,7 @@ class ExportSpringBoot extends Export {
+@@ -197,7 +196,7 @@ class ExportSpringBoot extends Export {
          RuntimeUtil.loadProperties(prop, settings);
          String repos = getMavenRepositories(settings, prop, camelSpringBootVersion);
  
@@ -80,7 +80,7 @@ index 22c3ef787879..d3f8b3f6a415 100644
          if (ObjectHelper.isEmpty(camelVersion)) {
              camelVersion = catalog.getLoadedVersion();
          }
-@@ -291,7 +290,7 @@ class ExportSpringBoot extends Export {
+@@ -304,7 +303,7 @@ class ExportSpringBoot extends Export {
          RuntimeUtil.loadProperties(prop, settings);
          String repos = getMavenRepositories(settings, prop, camelSpringBootVersion);
  
@@ -89,54 +89,54 @@ index 22c3ef787879..d3f8b3f6a415 100644
          String camelVersion = catalog.getLoadedVersion();
  
          context = context.replaceFirst("\\{\\{ \\.GroupId }}", ids[0]);
-@@ -416,6 +415,51 @@ class ExportSpringBoot extends Export {
+@@ -433,6 +432,51 @@ class ExportSpringBoot extends Export {
          return super.applicationPropertyLine(key, value);
      }
  
-+	@Override
-+	protected void copyDockerFiles(String buildDir) throws Exception {
-+		Path docker = Path.of(buildDir).resolve("src/main/docker");
-+		Files.createDirectories(docker);
-+		String[] ids = gav.split(":");
-+		// we only support and have docker files for java 17 or 21
-+		String v = javaVersion.equals("17") ? "17" : "21";
++    @Override
++    protected void copyDockerFiles(String buildDir) throws Exception {
++        Path docker = Path.of(buildDir).resolve("src/main/docker");
++        Files.createDirectories(docker);
++        String[] ids = gav.split(":");
++        // we only support and have docker files for java 17 or 21
++        String v = javaVersion.equals("17") ? "17" : "21";
 +
-+		// First try to load a specialized template from the catalog, if the catalog does not provide it
-+		// fallback to the template defined in camel-jbang-core
-+		String context;
-+		InputStream is = catalog.loadResource("camel-jbang/docker/templates", "Dockerfile" + v + ".tmpl");
-+		if (is != null) {
-+			context = IOHelper.loadText(is);
-+		} else {
-+			context = readResourceTemplate("templates/" + pomTemplateName);
-+		}
++        // First try to load a specialized template from the catalog, if the catalog does not provide it
++        // fallback to the template defined in camel-jbang-core
++        String context;
++        InputStream is = catalog.loadResource("camel-jbang/docker/templates", "Dockerfile" + v + ".tmpl");
++        if (is != null) {
++            context = IOHelper.loadText(is);
++        } else {
++            context = readResourceTemplate("templates/" + pomTemplateName);
++        }
 +
-+		IOHelper.close(is);
++        IOHelper.close(is);
 +
-+		String appJar = ids[1] + "-" + ids[2] + ".jar";
-+		context = context.replaceAll("\\{\\{ \\.ArtifactId }}", ids[1]);
-+		context = context.replaceAll("\\{\\{ \\.Version }}", ids[2]);
-+		context = context.replaceAll("\\{\\{ \\.AppJar }}", appJar);
-+		Files.writeString(docker.resolve("Dockerfile"), context);
-+	}
++        String appJar = ids[1] + "-" + ids[2] + ".jar";
++        context = context.replaceAll("\\{\\{ \\.ArtifactId }}", ids[1]);
++        context = context.replaceAll("\\{\\{ \\.Version }}", ids[2]);
++        context = context.replaceAll("\\{\\{ \\.AppJar }}", appJar);
++        Files.writeString(docker.resolve("Dockerfile"), context);
++    }
 +
-+	@Override
-+	protected void copyReadme(String buildDir, String appJar) throws Exception {
-+		String[] ids = gav.split(":");
-+		String context;
-+		InputStream is = catalog.loadResource("camel-jbang/docker/templates", "readme.md.tmpl");
-+		if (is != null) {
-+			context = IOHelper.loadText(is);
-+		} else {
-+			context = readResourceTemplate("templates/readme.md.tmpl");
-+		}
-+		IOHelper.close(is);
++    @Override
++    protected void copyReadme(String buildDir, String appJar) throws Exception {
++        String[] ids = gav.split(":");
++        String context;
++        InputStream is = catalog.loadResource("camel-jbang/docker/templates", "readme.md.tmpl");
++        if (is != null) {
++            context = IOHelper.loadText(is);
++        } else {
++            context = readResourceTemplate("templates/readme.md.tmpl");
++        }
++        IOHelper.close(is);
 +
-+		context = context.replaceAll("\\{\\{ \\.ArtifactId }}", ids[1]);
-+		context = context.replaceAll("\\{\\{ \\.Version }}", ids[2]);
-+		context = context.replaceAll("\\{\\{ \\.AppRuntimeJar }}", appJar);
-+		Files.writeString(Path.of(buildDir).resolve("readme.md"), context);
-+	}
++        context = context.replaceAll("\\{\\{ \\.ArtifactId }}", ids[1]);
++        context = context.replaceAll("\\{\\{ \\.Version }}", ids[2]);
++        context = context.replaceAll("\\{\\{ \\.AppRuntimeJar }}", appJar);
++        Files.writeString(Path.of(buildDir).resolve("readme.md"), context);
++    }
 +
      private String readResourceTemplate(String name) throws IOException {
          InputStream is = ExportSpringBoot.class.getClassLoader().getResourceAsStream(name);

@@ -1,8 +1,8 @@
-From 4673df318bcc6407cd95c52df3a03adf854c4ec1 Mon Sep 17 00:00:00 2001
+From c5d3b1dbfaf3ac3b8f4a24e64dc7e41075266518 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Wed, 12 Nov 2025 12:29:31 -0500
+Date: Fri, 13 Feb 2026 18:57:44 -0500
 Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
- productized
+ being productized
 
 ---
  components/camel-platform-http-main/pom.xml  | 2 +-
@@ -11,20 +11,20 @@ Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  3 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/components/camel-platform-http-main/pom.xml b/components/camel-platform-http-main/pom.xml
-index 820ea9f09d15..01ca2c027f07 100644
+index 4a7f426369a5..abb3c0d6942f 100644
 --- a/components/camel-platform-http-main/pom.xml
 +++ b/components/camel-platform-http-main/pom.xml
-@@ -65,7 +65,7 @@
+@@ -60,7 +60,7 @@
          <dependency>
              <groupId>io.vertx</groupId>
-             <artifactId>vertx-auth-jwt</artifactId>
+             <artifactId>vertx-auth-properties</artifactId>
 -            <version>${vertx-version}</version>
 +            <version>${vertx-community-version}</version>
          </dependency>
- 
-         <!-- test dependencies -->
+         <dependency>
+             <groupId>io.vertx</groupId>
 diff --git a/components/camel-platform-http-vertx/pom.xml b/components/camel-platform-http-vertx/pom.xml
-index 7f14008e16a3..c76d2a60d66c 100644
+index 04134fb342c9..9241c5eaeca5 100644
 --- a/components/camel-platform-http-vertx/pom.xml
 +++ b/components/camel-platform-http-vertx/pom.xml
 @@ -53,7 +53,7 @@
@@ -37,17 +37,17 @@ index 7f14008e16a3..c76d2a60d66c 100644
  
          <!-- test dependencies -->
 diff --git a/parent/pom.xml b/parent/pom.xml
-index 2ebe799583ca..761c4ddde2c6 100644
+index 1cb9bf295362..86820e037ee9 100644
 --- a/parent/pom.xml
 +++ b/parent/pom.xml
-@@ -512,6 +512,7 @@
-         <vavr-version>0.10.7</vavr-version>
+@@ -542,6 +542,7 @@
+         <vavr-version>1.0.0</vavr-version>
          <velocity-tools-version>3.1</velocity-tools-version>
          <velocity-version>2.4.1</velocity-version>
-+        <vertx-community-version>4.5.22</vertx-community-version>
-         <vertx-version>4.5.22</vertx-version>
++        <vertx-community-version>4.5.24</vertx-community-version>
+         <vertx-version>4.5.24</vertx-version>
          <vysper-version>0.7</vysper-version>
-         <weaviate-client-version>5.4.0</weaviate-client-version>
+         <weaviate-client-version>5.5.0</weaviate-client-version>
 -- 
 2.48.1
 

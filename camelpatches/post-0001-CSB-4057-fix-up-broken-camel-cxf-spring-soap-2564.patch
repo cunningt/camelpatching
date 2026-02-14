@@ -1,16 +1,15 @@
-From 559eb3eae32e1e6b0ce2ae8b12f4a36134f92224 Mon Sep 17 00:00:00 2001
+From 0ef9708409b5fab619261e9b3b8d404cf7211270 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Tue, 17 Sep 2024 07:46:56 -0400
-Subject: [PATCH] [CSB-4057]fix up broken camel-cxf-spring-soap (#2564)
+Date: Fri, 13 Feb 2026 19:01:15 -0500
+Subject: [PATCH] [CSB-4057]fix up broken camel-cxf-spring-soap
 
-Co-authored-by: Freeman Fang <freeman.fang@gmail.com>
 ---
- .../camel/component/cxf/CxfMessageHeaderTimeoutTest.java      | 4 ++--
- .../java/org/apache/camel/component/cxf/CxfTimeoutTest.java   | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ .../camel/component/cxf/CxfMessageHeaderTimeoutTest.java     | 5 ++---
+ .../java/org/apache/camel/component/cxf/CxfTimeoutTest.java  | 4 ++--
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
 diff --git a/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfMessageHeaderTimeoutTest.java b/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfMessageHeaderTimeoutTest.java
-index 1156eee46d3f..0f56a771287f 100644
+index be7a0db902ac..3b757b2563c1 100644
 --- a/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfMessageHeaderTimeoutTest.java
 +++ b/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfMessageHeaderTimeoutTest.java
 @@ -16,7 +16,7 @@
@@ -22,17 +21,18 @@ index 1156eee46d3f..0f56a771287f 100644
  import java.util.ArrayList;
  import java.util.HashMap;
  import java.util.List;
-@@ -63,7 +63,7 @@ public class CxfMessageHeaderTimeoutTest extends CamelSpringTestSupport {
+@@ -66,8 +66,7 @@ public class CxfMessageHeaderTimeoutTest extends CamelSpringTestSupport {
          Exchange reply = sendJaxWsMessage(endpointUri);
          Exception e = reply.getException();
          assertNotNull(e, "We should get the exception cause here");
--        assertTrue(e instanceof HttpTimeoutException, "We should get an http time out exception here");
+-        assertTrue(e instanceof HttpTimeoutException,
+-                String.format("Expected HttpTimeoutException, but got %s", e.getClass().getName()));
 +        assertTrue(e instanceof SocketTimeoutException, "We should get a socket time out exception here");
      }
  
      protected Exchange sendJaxWsMessage(String endpointUri) throws InterruptedException {
 diff --git a/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfTimeoutTest.java b/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfTimeoutTest.java
-index dd41c4392bf4..897328bedc80 100644
+index 38e4e3b27609..ee275aa813c8 100644
 --- a/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfTimeoutTest.java
 +++ b/components/camel-cxf/camel-cxf-spring-soap/src/test/java/org/apache/camel/component/cxf/CxfTimeoutTest.java
 @@ -16,7 +16,7 @@
@@ -44,7 +44,7 @@ index dd41c4392bf4..897328bedc80 100644
  import java.util.ArrayList;
  import java.util.List;
  
-@@ -96,7 +96,7 @@ public class CxfTimeoutTest extends CamelSpringTestSupport {
+@@ -94,7 +94,7 @@ public class CxfTimeoutTest extends CamelSpringTestSupport {
          Exchange reply = sendJaxWsMessage(endpointUri);
          Exception e = reply.getException();
          assertNotNull(e, "We should get the exception cause here");
@@ -54,5 +54,5 @@ index dd41c4392bf4..897328bedc80 100644
  
      protected Exchange sendJaxWsMessage(String endpointUri) throws InterruptedException {
 -- 
-2.46.0
+2.48.1
 
