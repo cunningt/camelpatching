@@ -1,1 +1,164 @@
-0001-Add-prod-maven-plugin.patch
+From ef6f4a9027f6abfad90ad3eddbe1b7c00ec577ce Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Mon, 16 Feb 2026 14:27:34 -0500
+Subject: [PATCH] Add prod maven plugin
+
+---
+ catalog/camel-catalog/pom.xml                 |  3 ++
+ pom.xml                                       | 51 +++++++++++++++++++
+ .../maven/bom/generator/BomGeneratorMojo.java | 14 +++--
+ .../maven/packaging/PrepareComponentMojo.java |  5 +-
+ 4 files changed, 67 insertions(+), 6 deletions(-)
+
+diff --git a/catalog/camel-catalog/pom.xml b/catalog/camel-catalog/pom.xml
+index 2aa71fda2e35..770ca812b93a 100644
+--- a/catalog/camel-catalog/pom.xml
++++ b/catalog/camel-catalog/pom.xml
+@@ -35,6 +35,9 @@
+         <!-- use by camel-catalog -->
+         <firstVersion>2.15.0</firstVersion>
+         <label>tooling</label>
++
++        <!-- Do not execute prepare-catalog when camel-prod-excludes is skipped. Otherwise the catalog would be incomplete -->
++        <camel.prepare-catalog.skip>${cq.camel-prod-excludes.skip}</camel.prepare-catalog.skip>
+     </properties>
+ 
+     <dependencies>
+diff --git a/pom.xml b/pom.xml
+index 01ccfdf04c93..878421d13e08 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -108,6 +108,9 @@
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+ 
++        <camel-community-version>4.18.0</camel-community-version>
++        <cq-plugin-version>4.16.2</cq-plugin-version>
++
+         <site-repo-url>scpexe://people.apache.org/www/camel.apache.org/maven/</site-repo-url>
+         <jdk.version>17</jdk.version>
+         <!-- These two are here only to prevent the versions for the Apache parent pom from leaking-->
+@@ -168,6 +171,40 @@
+         <defaultGoal>install</defaultGoal>
+ 
+         <plugins>
++            <plugin>
++                <groupId>org.l2x6.cq</groupId>
++                <artifactId>cq-camel-prod-maven-plugin</artifactId>
++                <version>${cq-plugin-version}</version>
++                <configuration>
++                    <requiredProductizedCamelArtifacts>${maven.multiModuleProjectDirectory}/product/src/main/resources/required-productized-camel-artifacts.txt</requiredProductizedCamelArtifacts>
++                    <simpleElementWhitespace>SPACE</simpleElementWhitespace>
++                    <additionalProductizedArtifactIds>
++                        <additionalProductizedArtifactId>camel</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-bom</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-core</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-dependencies</additionalProductizedArtifactId>
++                        <additionalProductizedArtifactId>camel-parent</additionalProductizedArtifactId>
++                    </additionalProductizedArtifactIds>
++                </configuration>
++                <dependencies>
++                    <dependency>
++                        <groupId>org.apache.camel</groupId>
++                        <artifactId>camel-package-maven-plugin</artifactId>
++                        <version>${camel-community-version}</version>
++                    </dependency>
++                    <dependency>
++                        <groupId>com.google.guava</groupId>
++                        <artifactId>guava</artifactId>
++                        <version>32.1.1-jre</version>
++                        <exclusions>
++                            <exclusion>
++                                <groupId>com.google.code.findbugs</groupId>
++                                <artifactId>jsr305</artifactId>
++                            </exclusion>
++                        </exclusions>
++                    </dependency>
++                </dependencies>
++            </plugin>
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-enforcer-plugin</artifactId>
+@@ -236,6 +273,20 @@
+ 
+         <pluginManagement>
+             <plugins>
++                <plugin>
++                    <groupId>org.l2x6.cq</groupId>
++                    <artifactId>cq-camel-prod-maven-plugin</artifactId>
++                    <executions>
++                        <execution>
++                            <id>check-excludes</id>
++                            <phase>validate</phase>
++                            <inherited>false</inherited>
++                            <goals>
++                                <goal>camel-prod-excludes-check</goal>
++                            </goals>
++                        </execution>
++                    </executions>
++                </plugin>
+                 <plugin>
+                     <groupId>com.mycila</groupId>
+                     <artifactId>license-maven-plugin</artifactId>
+diff --git a/tooling/maven/bom-generator-maven-plugin/src/main/java/org/apache/camel/maven/bom/generator/BomGeneratorMojo.java b/tooling/maven/bom-generator-maven-plugin/src/main/java/org/apache/camel/maven/bom/generator/BomGeneratorMojo.java
+index 1fb3c808af92..d6568ce84f40 100644
+--- a/tooling/maven/bom-generator-maven-plugin/src/main/java/org/apache/camel/maven/bom/generator/BomGeneratorMojo.java
++++ b/tooling/maven/bom-generator-maven-plugin/src/main/java/org/apache/camel/maven/bom/generator/BomGeneratorMojo.java
+@@ -143,7 +143,7 @@ public class BomGeneratorMojo extends AbstractMojo {
+         try {
+             DependencyManagement mng = project.getDependencyManagement();
+ 
+-            List<Dependency> filteredDependencies = filter(mng.getDependencies());
++            List<Dependency> filteredDependencies = enhance(filter(mng.getDependencies()));
+ 
+             Set<String> externallyManagedDependencies = getExternallyManagedDependencies();
+             checkConflictsWithExternalBoms(filteredDependencies, externallyManagedDependencies);
+@@ -162,6 +162,15 @@ public class BomGeneratorMojo extends AbstractMojo {
+         }
+     }
+ 
++    private List<Dependency> enhance(List<Dependency> dependencyList) {
++        for (Dependency dep : dependencyList) {
++            if (dep.getGroupId().startsWith("org.apache.camel") && project.getVersion().equals(dep.getVersion())) {
++                dep.setVersion("${project.version}");
++            }
++        }
++        return dependencyList;
++    }
++
+     private List<Dependency> filter(List<Dependency> dependencyList) {
+         List<Dependency> outDependencies = new ArrayList<>();
+ 
+@@ -201,9 +210,6 @@ public class BomGeneratorMojo extends AbstractMojo {
+         XPathExpression parentVersion = xpath.compile("/project/parent/version");
+         setActualVersion(pom, parentVersion);
+ 
+-        XPathExpression projectVersion = xpath.compile("/project/version");
+-        setActualVersion(pom, projectVersion);
+-
+         return pom;
+     }
+ 
+diff --git a/tooling/maven/camel-package-maven-plugin/src/main/java/org/apache/camel/maven/packaging/PrepareComponentMojo.java b/tooling/maven/camel-package-maven-plugin/src/main/java/org/apache/camel/maven/packaging/PrepareComponentMojo.java
+index e7e22eb3015e..4cd1b71c8904 100644
+--- a/tooling/maven/camel-package-maven-plugin/src/main/java/org/apache/camel/maven/packaging/PrepareComponentMojo.java
++++ b/tooling/maven/camel-package-maven-plugin/src/main/java/org/apache/camel/maven/packaging/PrepareComponentMojo.java
+@@ -284,12 +284,13 @@ public class PrepareComponentMojo extends AbstractGeneratorMojo {
+ 
+             // load existing dependencies
+             Pattern pattern = Pattern.compile(
+-                    "<dependency>\\s*<groupId>(?<groupId>.*)</groupId>\\s*<artifactId>(?<artifactId>.*)</artifactId>");
++                    "<dependency>\\s*<groupId>(?<groupId>.*)</groupId>\\s*<artifactId>(?<artifactId>.*)</artifactId>\\s*<version>(?<version>.*)</version>");
+             Matcher matcher = pattern.matcher(between);
+             TreeSet<MavenGav> dependencies = new TreeSet<>();
+             TreeSet<MavenGav> unsupportedArchDependencies = new TreeSet<>();
+             while (matcher.find()) {
+-                MavenGav gav = new MavenGav(matcher.group(1), matcher.group(2), "${project.version}", null);
++                String v = matcher.groupCount() > 2 ? matcher.group(3) : "${project.version}";
++                MavenGav gav = new MavenGav(matcher.group(1), matcher.group(2), v, null);
+                 dependencies.add(gav);
+             }
+ 
+-- 
+2.48.1
+

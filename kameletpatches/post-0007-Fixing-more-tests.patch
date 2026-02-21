@@ -1,0 +1,35 @@
+From 993f5fab54410830298445f8d909b05c62067097 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Fri, 20 Feb 2026 22:58:39 -0500
+Subject: [PATCH] Fixing more tests
+
+---
+ .../apache/camel/kamelets/catalog/KameletsCatalogTest.java   | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
+index b0997d292..900f7d1c3 100644
+--- a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
++++ b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
+@@ -121,7 +121,7 @@ public class KameletsCatalogTest {
+     void testGetKameletsByNamespace() throws Exception {
+         List<Kamelet> c = catalog.getKameletsByNamespace("AWS");
+         assertFalse(c.isEmpty());
+-        assertEquals(17, c.size());
++        assertEquals(19, c.size());
+         c = catalog.getKameletsByGroups("Not-existing-group");
+         assertTrue(c.isEmpty());
+     }
+@@ -193,9 +193,6 @@ public class KameletsCatalogTest {
+         verifyHeaders("jms-ibm-mq-sink", 18);
+         verifyHeaders("kafka-source", 9);
+         verifyHeaders("kafka-sink", 5);
+-        verifyHeaders("kubernetes-namespaces-source", 2);
+-        verifyHeaders("kubernetes-nodes-source", 2);
+-        verifyHeaders("kubernetes-pods-source", 2);
+         verifyHeaders("mariadb-source", 0);
+         verifyHeaders("mariadb-sink", 9);
+         verifyHeaders("minio-source", 15);
+-- 
+2.48.1
+

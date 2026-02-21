@@ -1,0 +1,4 @@
+# Dependencies for camel.py, csb.py, and kamelet.py
+rich>=13.0.0
+
+# Requires Python 3.6 or higher

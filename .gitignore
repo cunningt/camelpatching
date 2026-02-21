@@ -4,3 +4,5 @@ camel-kamelets-*-branch
 prodlocation
 csbprodlocation
 kameletprodlocation
+venv/
+__pycache__/
