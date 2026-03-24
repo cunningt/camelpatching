@@ -219,7 +219,7 @@ debug_mode = args.debug
 use_reject = args.use_reject
 
 # Configuration
-vers = "4.18.0"
+vers = "4.18.1"
 dir_name = f"camel-spring-boot-{vers}-branch"
 patchdir = "csbpatches"
 
