@@ -224,7 +224,7 @@ dir_name = f"camel-spring-boot-{vers}-branch"
 patchdir = "csbpatches"
 
 upstreambranch = f"camel-spring-boot-{vers}"
-currentprodbranch = "camel-spring-boot-4.14.4-branch"
+currentprodbranch = "camel-spring-boot-4.18.0-branch"
 prodlocation = "csbprodlocation"
 
 # Print welcome banner
