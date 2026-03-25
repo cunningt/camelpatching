@@ -352,6 +352,10 @@ else:
 
 time.sleep(3)
 
+if "endafterpost" in endpoint:
+    print_success("Stopping after post-patches (endafterpost)")
+    sys.exit(0)
+
 # Apply tooling changes
 print_step(8, 9, "Copying tooling files")
 console.print("  [dim]→ Copying tooling pom.xml[/dim]")

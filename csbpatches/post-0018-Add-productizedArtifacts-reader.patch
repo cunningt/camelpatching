@@ -1,0 +1,29 @@
+From db01e18431e88ffc3e566df0608ca74a0c225d95 Mon Sep 17 00:00:00 2001
+From: Tom Cunningham <tcunning@redhat.com>
+Date: Tue, 24 Mar 2026 22:36:11 -0400
+Subject: [PATCH] Add productizedArtifacts reader
+
+---
+ .../org/apache/camel/springboot/maven/BomGeneratorMojo.java | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
+index ba0c528cf6f..e090ddf3c17 100644
+--- a/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
++++ b/tooling/camel-spring-boot-generator-maven-plugin/src/main/java/org/apache/camel/springboot/maven/BomGeneratorMojo.java
+@@ -138,6 +138,12 @@ public class BomGeneratorMojo extends AbstractMojo {
+     private List<Dependency> starters() throws IOException {
+         List<Dependency> outDependencies = new ArrayList<>();
+ 
++        HashMap<String, Boolean> productizedArtifacts = RequiredProductizedArtifactsReader.getProductizedCSBArtifacts(requiredProductizedCamelSpringBootArtifactsFile);
++
++        for (String s : productizedArtifacts.keySet()) {
++            System.out.println("Starter [" + s  + "] " + productizedArtifacts.get(s));
++        }
++
+         Files.list(startersDir.toPath()).filter(Files::isDirectory)
+                 // must have a pom.xml to be active
+                 .filter(d -> {
+-- 
+2.48.1
+
