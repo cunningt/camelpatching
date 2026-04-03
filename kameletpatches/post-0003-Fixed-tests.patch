@@ -1,14 +1,11 @@
-From 517207bf8fce05d7c339bfb463e14979cf4f7635 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Fri, 20 Feb 2026 22:53:56 -0500
+Date: Sun, 30 Mar 2026 10:00:00 -0400
 Subject: [PATCH] Fixed tests
 
 ---
- .../kamelets/catalog/KameletsCatalogTest.java | 50 +------------------
- 1 file changed, 1 insertion(+), 49 deletions(-)
-
 diff --git a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
-index 6cc0407fe..62a453f43 100644
+index 6af8d4d62..b0997d292 100644
 --- a/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
 +++ b/library/camel-kamelets-catalog/src/test/java/org/apache/camel/kamelets/catalog/KameletsCatalogTest.java
 @@ -121,7 +121,7 @@ public class KameletsCatalogTest {
@@ -99,7 +96,7 @@ index 6cc0407fe..62a453f43 100644
          verifyHeaders("mysql-sink", 9);
          verifyHeaders("mysql-source", 0);
 -        verifyHeaders("nats-sink", 5);
--        verifyHeaders("nats-source", 7);
+-        verifyHeaders("nats-source", 8);
 -        verifyHeaders("oracle-database-sink", 9);
 -        verifyHeaders("oracle-database-source", 0);
          verifyHeaders("postgresql-sink", 9);
@@ -137,6 +134,3 @@ index 6cc0407fe..62a453f43 100644
      }
  
      void verifyHeaders(String name, int expected) {
--- 
-2.48.1
-
