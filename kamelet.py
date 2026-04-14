@@ -219,11 +219,11 @@ debug_mode = args.debug
 use_reject = args.use_reject
 
 # Configuration
-vers = "4.18.1"
+vers = "4.19.0"
 dir_name = f"camel-kamelets-{vers}-branch"
 patchdir = "kameletpatches"
 
-currentprodbranch = "camel-kamelets-4.18.0-branch"
+currentprodbranch = "camel-kamelets-4.18.1-branch"
 prodlocation = "kameletprodlocation"
 
 # Print welcome banner

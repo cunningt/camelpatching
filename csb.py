@@ -219,12 +219,12 @@ debug_mode = args.debug
 use_reject = args.use_reject
 
 # Configuration
-vers = "4.18.1"
+vers = "4.19.0"
 dir_name = f"camel-spring-boot-{vers}-branch"
 patchdir = "csbpatches"
 
 upstreambranch = f"camel-spring-boot-{vers}"
-currentprodbranch = "camel-spring-boot-4.18.0-branch"
+currentprodbranch = "camel-spring-boot-4.18.1-branch"
 prodlocation = "csbprodlocation"
 
 # Print welcome banner
