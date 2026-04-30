@@ -18,7 +18,7 @@ index bf9e5efa684..3e63ee156dc 100644
 --- a/components-starter/camel-aws2-ddb-starter/src/test/java/org/apache/camel/component/aws2/ddbstream/Ddb2StreamTest.java
 +++ b/components-starter/camel-aws2-ddb-starter/src/test/java/org/apache/camel/component/aws2/ddbstream/Ddb2StreamTest.java
 @@ -33,6 +33,7 @@ import org.apache.camel.test.infra.aws2.clients.AWSSDKClientUtils;
- import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.apache.camel.test.spring.junit6.CamelSpringBootTest;
  import org.junit.jupiter.api.AfterAll;
  import org.junit.jupiter.api.BeforeAll;
 +import org.junit.jupiter.api.Disabled;
@@ -50,7 +50,7 @@ index 53d6684663f..d4ccebb4863 100644
 --- a/components-starter/camel-aws2-kinesis-starter/src/test/java/org/apache/camel/component/aws2/kinesis/KinesisComponentTest.java
 +++ b/components-starter/camel-aws2-kinesis-starter/src/test/java/org/apache/camel/component/aws2/kinesis/KinesisComponentTest.java
 @@ -27,6 +27,7 @@ import org.apache.camel.test.infra.aws2.clients.AWSSDKClientUtils;
- import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
+ import org.apache.camel.test.spring.junit6.CamelSpringBootTest;
  import org.junit.jupiter.api.AfterAll;
  import org.junit.jupiter.api.BeforeAll;
 +import org.junit.jupiter.api.Disabled;

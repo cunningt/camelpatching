@@ -6,7 +6,7 @@ Subject: [PATCH] Archetype: adds MicroShift profile
 ---
  .../camel-archetype-spring-boot/pom.xml       | 29 ++++++++++++++++
  .../resources/archetype-resources/pom.xml     | 33 +++++++++++++++++++
- .../resources/archetype-resources/readme.adoc | 21 ++++++++++++
+ .../resources/archetype-resources/README.adoc | 21 ++++++++++++
  .../projects/build-it/archetype.properties    |  8 -----
  .../deploy-on-microshift/archetype.properties | 20 +++++++++++
  .../projects/deploy-on-microshift/goal.txt    |  1 +
@@ -114,10 +114,10 @@ index 87c2108c7f0..a8a624a3462 100644
 +    </profile>
    </profiles>
  </project>
-diff --git a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc
+diff --git a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/README.adoc b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/README.adoc
 index 8d63b48289d..fd326b80a03 100644
---- a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc
-+++ b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/readme.adoc
+--- a/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/README.adoc
++++ b/archetypes/camel-archetype-spring-boot/src/main/resources/archetype-resources/README.adoc
 @@ -28,6 +28,27 @@ You can run unit test of this example using
  
      mvn clean test

@@ -299,7 +299,7 @@ index 915ef17f9cf..aa44fb2c8d0 100644
 +        outDependencies.add(dep);
 +        dep = new Dependency();
 +        dep.setGroupId("org.apache.camel");
-         dep.setArtifactId("camel-test-spring-junit5");
+         dep.setArtifactId("camel-test-spring-junit6");
 -        dep.setVersion(project.getVersion());
 +        dep.setVersion("${camel-version}");
          outDependencies.add(dep);

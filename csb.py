@@ -365,6 +365,18 @@ subprocess.run(["cp", "-r", f"../{prodlocation}/tooling/redhat-camel-spring-boot
 console.print("  [dim]→ Copying redhat-patch-maven-plugin[/dim]")
 subprocess.run(["cp", "-r", f"../{prodlocation}/tooling/redhat-patch-maven-plugin", "./tooling"])
 
+time.sleep(3)
+
+# Update tooling versions
+print_info("Updating tooling versions")
+run_command([
+    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    f"-DnewVersion={vers}-SNAPSHOT",
+    "-DgenerateBackupPoms=false",
+    "-f", "tooling/pom.xml",
+    "versions:set"
+], f"Setting tooling version to {vers}-SNAPSHOT", env=os.environ)
+
 time.sleep(15)
 
 subprocess.run(["git", "add", "tooling"])
