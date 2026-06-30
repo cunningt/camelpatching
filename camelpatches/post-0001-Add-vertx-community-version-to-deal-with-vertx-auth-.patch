@@ -1,6 +1,6 @@
-From 34a7b6c3a909af402fda70765a7b9f3ec1e16bce Mon Sep 17 00:00:00 2001
+From 7cc7379003b7000f04a77234724270bc0ece4f5d Mon Sep 17 00:00:00 2001
 From: Tom Cunningham <tcunning@redhat.com>
-Date: Mon, 23 Mar 2026 16:01:55 -0400
+Date: Tue, 30 Jun 2026 08:32:50 -0400
 Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  being productized
 
@@ -11,7 +11,7 @@ Subject: [PATCH] Add vertx-community-version to deal with vertx-auth-jwt not
  3 files changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/components/camel-platform-http-main/pom.xml b/components/camel-platform-http-main/pom.xml
-index b5ac496b6d80..5f40b7d0d6c5 100644
+index c672251fbec6..6dc1d29655d7 100644
 --- a/components/camel-platform-http-main/pom.xml
 +++ b/components/camel-platform-http-main/pom.xml
 @@ -60,7 +60,7 @@
@@ -24,7 +24,7 @@ index b5ac496b6d80..5f40b7d0d6c5 100644
          <dependency>
              <groupId>io.vertx</groupId>
 diff --git a/components/camel-platform-http-vertx/pom.xml b/components/camel-platform-http-vertx/pom.xml
-index 3fc9400212fe..001d9010f443 100644
+index 7cff732bc372..dc4b3e9c8def 100644
 --- a/components/camel-platform-http-vertx/pom.xml
 +++ b/components/camel-platform-http-vertx/pom.xml
 @@ -53,7 +53,7 @@
@@ -37,14 +37,14 @@ index 3fc9400212fe..001d9010f443 100644
  
          <!-- test dependencies -->
 diff --git a/parent/pom.xml b/parent/pom.xml
-index e9830c7e689b..a446b62980b0 100644
+index e8e021462316..c8e72467e164 100644
 --- a/parent/pom.xml
 +++ b/parent/pom.xml
-@@ -544,6 +544,7 @@
+@@ -547,6 +547,7 @@
          <velocity-tools-version>3.1</velocity-tools-version>
          <velocity-version>2.4.1</velocity-version>
-         <vertx-version>4.5.25</vertx-version>
-+        <vertx-community-version>4.5.25</vertx-community-version>
+         <vertx-version>4.5.26</vertx-version>
++        <vertx-community-version>4.5.26</vertx-community-version>
          <vysper-version>0.7</vysper-version>
          <weaviate-client-version>5.5.0</weaviate-client-version>
          <web3j-version>5.0.0</web3j-version>
