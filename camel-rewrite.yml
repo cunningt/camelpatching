@@ -5,13 +5,13 @@ displayName: Add Product Branch Properties
 recipeList:
   - org.openrewrite.maven.AddProperty:
       key: camel-community-version
-      value: 4.14.2
+      value: 4.18.3
   - org.openrewrite.maven.AddProperty:
       key: cq-plugin.version
       value: 4.5.0
   - org.openrewrite.maven.AddProperty:
       key: camel-sap.version
-      value: 4.8.0.redhat-00005
+      value: 4.18.3.redhat-00001
   - org.openrewrite.maven.AddPlugin:
       groupId: org.l2x6.cq
       artifactId: cq-camel-prod-maven-plugin
