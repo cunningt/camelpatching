@@ -202,7 +202,10 @@ def apply_patch(patch_file, debug=False, use_reject_mode=False):
                 print_success(f"Applied {patch_file.name} (via 3-way merge)")
 
 # Set JAVA_HOME (uses Java 17 for kamelets)
-os.environ['JAVA_HOME'] = "/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home"
+os.environ['JAVA_HOME'] = "/Users/fmariani/.sdkman/candidates/java/17.0.17-tem"
+
+# Set truststore for PNC/Indy access
+os.environ['MAVEN_OPTS'] = os.environ.get('MAVEN_OPTS', '') + " -Djavax.net.ssl.trustStore=/Users/fmariani/.pnc-bacon/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit"
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Camel Kamelets patching automation script')
@@ -219,11 +222,11 @@ debug_mode = args.debug
 use_reject = args.use_reject
 
 # Configuration
-vers = "4.19.0"
+vers = "4.21.0"
 dir_name = f"camel-kamelets-{vers}-branch"
 patchdir = "kameletpatches"
 
-currentprodbranch = "camel-kamelets-4.18.1-branch"
+currentprodbranch = "camel-kamelets-4.19.0-branch"
 prodlocation = "kameletprodlocation"
 
 # Print welcome banner
@@ -262,7 +265,7 @@ time.sleep(3)
 # Change the version
 print_step(4, 7, "Updating Maven version")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     f"-DnewVersion={vers}-SNAPSHOT",
     "-DgenerateBackupPoms=false",
     "versions:set"
@@ -300,7 +303,7 @@ if "endbeforepre" in endpoint:
 # Build
 print_info("Building with Maven (this may take a while...)")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"
@@ -332,7 +335,7 @@ time.sleep(3)
 print_step(7, 7, "Final build and metadata update")
 print_info("Running final Maven build (this may take a while...)")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"
@@ -358,7 +361,7 @@ run_command(["git", "commit", "-a", "-m", "RHBAC-70 - Kamelets Catalog: Change m
 # Final build after metadata change
 print_info("Final build after metadata changes...")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"

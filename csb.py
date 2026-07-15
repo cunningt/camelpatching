@@ -202,7 +202,10 @@ def apply_patch(patch_file, debug=False, use_reject_mode=False):
                 print_success(f"Applied {patch_file.name} (via 3-way merge)")
 
 # Set JAVA_HOME
-os.environ['JAVA_HOME'] = "/opt/homebrew/Cellar/openjdk@21/21.0.8/libexec/openjdk.jdk/Contents/Home"
+os.environ['JAVA_HOME'] = "/opt/homebrew/Cellar/openjdk@21/21.0.10/libexec/openjdk.jdk/Contents/Home"
+
+# Set truststore for PNC/Indy access
+os.environ['MAVEN_OPTS'] = os.environ.get('MAVEN_OPTS', '') + " -Djavax.net.ssl.trustStore=/Users/fmariani/.pnc-bacon/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit"
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Camel Spring Boot patching automation script')
@@ -219,12 +222,12 @@ debug_mode = args.debug
 use_reject = args.use_reject
 
 # Configuration
-vers = "4.19.0"
+vers = "4.21.0"
 dir_name = f"camel-spring-boot-{vers}-branch"
 patchdir = "csbpatches"
 
 upstreambranch = f"camel-spring-boot-{vers}"
-currentprodbranch = "camel-spring-boot-4.18.1-branch"
+currentprodbranch = "camel-spring-boot-4.19.0-branch"
 prodlocation = "csbprodlocation"
 
 # Print welcome banner
@@ -265,7 +268,7 @@ time.sleep(3)
 # Change the version
 print_step(4, 9, "Updating Maven version")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     f"-DnewVersion={vers}-SNAPSHOT",
     "-DgenerateBackupPoms=false",
     "versions:set"
@@ -278,7 +281,7 @@ run_command(["git", "commit", "-a", "-m", f"Change versions to {vers}-SNAPSHOT"]
 print_info("Running OpenRewrite")
 run_command(["cp", "../csb-rewrite.yml", "./rewrite.yml"], "Copying rewrite.yml")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-N",
     "-U",
     "org.openrewrite.maven:rewrite-maven-plugin:run",
@@ -313,7 +316,7 @@ print_success("CICS directory copied")
 # Run prod-maven-plugin
 print_step(6, 9, "Running prod-maven-plugin")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "org.l2x6.cq:cq-camel-spring-boot-prod-maven-plugin:camel-spring-boot-prod-excludes",
     "-N"
 ], "Executing camel-spring-boot-prod-excludes", env=os.environ)
@@ -326,7 +329,7 @@ run_command(["git", "commit", "-a", "-m", "Run prod-maven-plugin for the first t
 
 print_info("Building with Maven (this may take a while...)")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"
@@ -370,7 +373,7 @@ time.sleep(3)
 # Update tooling versions
 print_info("Updating tooling versions")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     f"-DnewVersion={vers}-SNAPSHOT",
     "-DgenerateBackupPoms=false",
     "-f", "tooling/pom.xml",
@@ -390,7 +393,7 @@ run_command(["git", "commit", "-a", "-m", "Compile with results of prod-maven-pl
 print_step(9, 9, "Final build")
 print_info("Running final Maven build (this may take a while...)")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"

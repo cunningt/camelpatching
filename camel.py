@@ -202,7 +202,10 @@ def apply_patch(patch_file, debug=False, use_reject_mode=False):
                 print_success(f"Applied {patch_file.name} (via 3-way merge)")
 
 # Set JAVA_HOME
-os.environ['JAVA_HOME'] = "/opt/homebrew/Cellar/openjdk@21/21.0.8/libexec/openjdk.jdk/Contents/Home"
+os.environ['JAVA_HOME'] = "/opt/homebrew/Cellar/openjdk@21/21.0.10/libexec/openjdk.jdk/Contents/Home"
+
+# Set truststore for PNC/Indy access
+os.environ['MAVEN_OPTS'] = os.environ.get('MAVEN_OPTS', '') + " -Djavax.net.ssl.trustStore=/Users/fmariani/.pnc-bacon/truststore.jks -Djavax.net.ssl.trustStorePassword=changeit"
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description='Camel patching automation script')
@@ -219,12 +222,12 @@ debug_mode = args.debug
 use_reject = args.use_reject
 
 # Configuration
-vers = "4.19.0"
+vers = "4.21.0"
 dir_name = f"camel-{vers}-branch"
 patchdir = "camelpatches"
 
 upstreambranch = f"camel-{vers}"
-currentprodbranch = "camel-4.18.1-branch"
+currentprodbranch = "camel-4.19.0-branch"
 prodlocation = "prodlocation"
 
 # Print welcome banner
@@ -265,7 +268,7 @@ time.sleep(3)
 # Change the version
 print_step(4, 8, "Updating Maven version")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     f"-DnewVersion={vers}-SNAPSHOT",
     "-DgenerateBackupPoms=false",
     "versions:set"
@@ -303,7 +306,7 @@ time.sleep(3)
 
 print_step(6, 8, "Running prod-maven-plugin")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "org.l2x6.cq:cq-camel-prod-maven-plugin:camel-prod-excludes",
     "-N"
 ], "Executing camel-prod-excludes", env=os.environ)
@@ -316,7 +319,7 @@ run_command(["git", "commit", "-a", "-m", "Run prod-maven-plugin for the first t
 
 print_info("Building with Maven (this may take a while...)")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"
@@ -346,7 +349,7 @@ time.sleep(3)
 print_step(8, 8, "Final build")
 print_info("Running final Maven build (this may take a while...)")
 run_command([
-    "/usr/local/apache-maven-3.9.9/bin/mvn",
+    "mvn",
     "-DskipTests",
     "clean",
     "install"
